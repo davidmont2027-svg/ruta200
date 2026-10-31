@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RUTA 200 — Juntos en el camino</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#fff;background:#0b0b0b}*{box-sizing:border-box}body{margin:0}header{padding:28px 16px;text-align:center;background:linear-gradient(140deg,#080808,#272012,#080808);border-bottom:2px solid #c99a39}h1{color:#f6cb66;font-size:clamp(38px,9vw,68px);margin:0;letter-spacing:2px;text-shadow:0 2px 10px #8b5d1c}header p{margin:3px;color:#eee;font-weight:700;letter-spacing:2px}header small{color:#e0bd70}main{max-width:620px;margin:auto;padding:18px}.panel{background:#1b1b1b;border:1px solid #80632d;border-radius:18px;padding:18px;margin:15px 0}h2{font-size:20px;color:#f3c866;margin:0 0 14px}label{display:block;margin:12px 0 6px;color:#e6d2a1}select,input,button{font:inherit;width:100%;padding:13px;border-radius:10px}select,input{background:#292929;color:white;border:1px solid #8d763f}button{background:linear-gradient(#f8d67b,#d9a83d);color:#15110b;border:0;font-weight:800;margin-top:16px;cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid white}.row{display:flex;justify-content:space-between;gap:8px;align-items:center}.total{font-size:26px;color:#f6cb66;font-weight:800}.muted{color:#aaa;font-size:13px}.notice{background:#2a2418;border-left:4px solid #f2c65e;padding:12px;border-radius:7px}a{color:#f3c866}#result{display:none}footer{text-align:center;padding:22px;color:#aaa;font-size:12px}
+</style></head><body>
+<header><h1>RUTA 200</h1><p>JUNTOS EN EL CAMINO</p><small>TEPIC · MEZCALES · VALLARTA</small></header>
+<main><div class="notice"><strong>Versión interna de demostración.</strong> No se apartan asientos, no se envían avisos y no se reciben pagos.</div>
+<section class="panel"><h2>🚗 Elige tu viaje</h2>
+<label for="ruta">Recorrido</label><select id="ruta"><option value="ida">Tepic → Mezcales</option><option value="vuelta">Mezcales → Tepic</option></select>
+<label for="fecha">Fecha</label><input type="date" id="fecha">
+<label for="salida">Salida (hora local de origen)</label><select id="salida"></select>
+<label for="asientos">Número de asientos</label><select id="asientos"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+<div class="row"><strong>Total de ejemplo</strong><span class="total" id="total">$250 MXN</span></div>
+<button id="continuar">VER RESUMEN DEL VIAJE</button></section>
+<section class="panel" id="result" aria-live="polite"><h2>Resumen de demostración</h2><div id="detalle"></div><p class="muted">Este resumen no es un boleto ni una reservación. La disponibilidad es ilustrativa.</p><button id="volver">ELEGIR OTRO VIAJE</button></section>
+<section class="panel"><h2>📲 Atención por WhatsApp</h2><p>33 4845 5057</p><a href="https://wa.me/523348455057" target="_blank" rel="noopener">Contactar a RUTA 200</a></section>
+</main><footer>RUTA 200 · Proyecto privado en desarrollo · Horarios estimados sujetos a confirmación</footer>
+<script>
+const schedules=[];
+for(let car=1;car<=6;car++){let t=4*60+(car-1)*60;for(let leg=0;leg<4;leg++){const route=leg%2===0?'ida':'vuelta';const departure=t+(leg*190);const local=(departure+(route==='vuelta'?60:0))%1440;const arrival=(departure+150+(route==='ida'?60:0))%1440;schedules.push({car,route,local,arrival});}}
+const pad=n=>String(n).padStart(2,'0'),fmt=n=>pad(Math.floor(n/60)%24)+':'+pad(n%60);
+const ruta=document.querySelector('#ruta'),salida=document.querySelector('#salida'),asientos=document.querySelector('#asientos'),fecha=document.querySelector('#fecha'),total=document.querySelector('#total');
+fecha.min=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);fecha.value=fecha.min;
+function update(){const items=schedules.filter(s=>s.route===ruta.value).sort((a,b)=>a.local-b.local);salida.replaceChildren(...items.map(s=>{const o=document.createElement('option');o.value=s.car+'-'+s.local;o.textContent=fmt(s.local)+' — Carro '+s.car;return o}));total.textContent='$'+(Number(asientos.value)*250)+' MXN';document.querySelector('#result').style.display='none'}
+ruta.addEventListener('change',update);asientos.addEventListener('change',()=>total.textContent='$'+(Number(asientos.value)*250)+' MXN');
+document.querySelector('#continuar').addEventListener('click',()=>{if(!fecha.value){alert('Selecciona una fecha');return}const [car,time]=salida.value.split('-').map(Number);const s=schedules.find(x=>x.car===car&&x.local===time&&x.route===ruta.value);const origen=ruta.value==='ida'?'Tepic':'Mezcales',destino=ruta.value==='ida'?'Mezcales':'Tepic';document.querySelector('#detalle').textContent=origen+' → '+destino+' | '+fecha.value+' | Carro '+car+' | Sale '+fmt(s.local)+' (hora de '+origen+') | Llega '+fmt(s.arrival)+' (hora de '+destino+') | '+asientos.value+' asiento(s) | $'+(250*Number(asientos.value))+' MXN';document.querySelector('#result').style.display='block';document.querySelector('#result').scrollIntoView({behavior:'smooth'})});
+document.querySelector('#volver').addEventListener('click',()=>{document.querySelector('#result').style.display='none';window.scrollTo({top:0,behavior:'smooth'})});update();
+</script></body></html>
