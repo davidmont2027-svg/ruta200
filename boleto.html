@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi boleto | RUTA 200</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#061426;color:white;font-family:Arial,sans-serif}
+.ticket{max-width:520px;margin:15px auto;background:linear-gradient(#092746,#031426);border:2px solid #d9a93d;border-radius:25px;overflow:hidden}
+header{text-align:center;padding:26px 12px;background:linear-gradient(120deg,#071528,#123a63)}
+.logo{font-size:43px;font-weight:900;font-style:italic;color:#ffcf58}
+.logo span{color:white}
+.sub{letter-spacing:3px;font-size:13px}
+.confirm{text-align:center;background:linear-gradient(90deg,#09549b,#087ac3);padding:17px;font-size:23px;font-weight:bold}
+section{padding:18px;margin:12px;border:1px solid #59758e;border-radius:17px}
+.gold{color:#ffd36b}
+.folio{background:linear-gradient(#ffe07d,#e9aa27);color:#161616;font-size:29px;font-weight:bold;text-align:center;border-radius:12px;padding:12px;margin:12px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+small{color:#b9cee2;display:block;margin-bottom:6px}
+strong{font-size:19px}
+.car{text-align:center;font-size:21px}
+.car img{width:100%;max-height:190px;object-fit:contain;border-radius:12px}
+.total{background:linear-gradient(#ffe07d,#e6a624);color:#111;text-align:center;padding:18px;font-size:27px;font-weight:bold;border-radius:13px;margin:12px}
+button{border:0;border-radius:13px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer}
+.actions{display:grid;gap:10px;padding:14px}
+.share{background:#27c267;color:white}
+.back{background:#f3f5f9;color:#10203a}
+.note{font-size:13px;color:#c7d5e3;line-height:1.6}
+.demo{background:#382e19;color:#ffe2a0;padding:12px;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<div class="ticket">
+<header>
+<div class="logo"><span>RUTA</span> 200</div>
+<div class="sub">JUNTOS EN EL CAMINO</div>
+</header>
+
+<div class="confirm">🎟️ TU BOLETO DE VIAJE</div>
+<div class="demo">VISTA DE DEMOSTRACIÓN · NO ES UNA RESERVACIÓN CONFIRMADA</div>
+
+<section>
+<small>Folio de demostración</small>
+<div class="folio" id="folio">R200-DEMO</div>
+<div class="grid">
+<div><small>Fecha del viaje</small><strong id="fecha">—</strong></div>
+<div><small>Salida</small><strong id="hora">—</strong></div>
+<div><small>Origen</small><strong id="origen">Tepic</strong></div>
+<div><small>Destino</small><strong id="destino">Mezcales</strong></div>
+<div><small>Asientos</small><strong id="asientos">1</strong></div>
+<div><small>Pasajero</small><strong id="pasajero">Invitado</strong></div>
+</div>
+</section>
+
+<section class="car">
+<div class="gold"><b>🚘 TU VEHÍCULO</b></div>
+<img src="portada-ruta200.png" alt="Vehículos RUTA 200">
+<strong id="vehiculo">Carro 1</strong>
+</section>
+
+<div class="total" id="total">$250 MXN</div>
+<div style="text-align:center">Pago al abordar · Sin pago en línea</div>
+
+<section class="note">
+<b class="gold">ℹ️ Información importante</b>
+<p>Esta pantalla es una prueba del diseño del boleto. Todavía no aparta asientos, no genera folios oficiales ni confirma viajes.</p>
+<p>Cuando conectemos las reservaciones reales, aquí aparecerán los datos confirmados.</p>
+</section>
+
+<div class="actions">
+<button class="share" onclick="compartir()">📲 COMPARTIR POR WHATSAPP</button>
+<button class="back" onclick="location.href='index.html'">🏠 VOLVER AL INICIO</button>
+</div>
+</div>
+
+<script>
+const q=new URLSearchParams(location.search);
+const get=(key,def)=>q.get(key)||def;
+const ruta=get("ruta","Tepic → Mezcales");
+const partes=ruta.split(/→|->/);
+const fecha=get("fecha","05/11/2026");
+const hora=get("hora","04:00");
+const asientos=Math.max(1,Math.min(6,parseInt(get("asientos","2"))||2));
+const pasajero=get("pasajero","Invitado");
+const vehiculo=get("vehiculo","Carro 1");
+const folio="R200-DEMO";
+document.getElementById("folio").textContent=folio;
+document.getElementById("fecha").textContent=fecha;
+document.getElementById("hora").textContent=hora;
+document.getElementById("origen").textContent=(partes[0]||"Tepic").trim();
+document.getElementById("destino").textContent=(partes[1]||"Mezcales").trim();
+document.getElementById("asientos").textContent=asientos+" lugar(es)";
+document.getElementById("pasajero").textContent=pasajero;
+document.getElementById("vehiculo").textContent=vehiculo;
+document.getElementById("total").textContent="$"+(asientos*250).toLocaleString("es-MX")+" MXN";
+function compartir(){
+const mensaje="🎟️ RUTA 200 - BOLETO DE DEMOSTRACIÓN\n"+
+"Pasajero: "+pasajero+"\nRuta: "+ruta+
+"\nFecha: "+fecha+"\nSalida: "+hora+
+"\nAsientos: "+asientos+"\nTotal: $"+(asientos*250)+" MXN"+
+"\n\nEsta prueba NO confirma una reservación.";
+window.open("https://wa.me/?text="+encodeURIComponent(mensaje),"_blank");
+}
+</script>
+</body>
+</html>
