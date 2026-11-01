@@ -25,4 +25,16 @@ function update(){const items=schedules.filter(s=>s.route===ruta.value).sort((a,
 ruta.addEventListener('change',update);asientos.addEventListener('change',()=>total.textContent='$'+(Number(asientos.value)*250)+' MXN');
 document.querySelector('#continuar').addEventListener('click',()=>{if(!fecha.value){alert('Selecciona una fecha');return}const [car,time]=salida.value.split('-').map(Number);const s=schedules.find(x=>x.car===car&&x.local===time&&x.route===ruta.value);const origen=ruta.value==='ida'?'Tepic':'Mezcales',destino=ruta.value==='ida'?'Mezcales':'Tepic';document.querySelector('#detalle').textContent=origen+' → '+destino+' | '+fecha.value+' | Carro '+car+' | Sale '+fmt(s.local)+' (hora de '+origen+') | Llega '+fmt(s.arrival)+' (hora de '+destino+') | '+asientos.value+' asiento(s) | $'+(250*Number(asientos.value))+' MXN';document.querySelector('#result').style.display='block';document.querySelector('#result').scrollIntoView({behavior:'smooth'})});
 document.querySelector('#volver').addEventListener('click',()=>{document.querySelector('#result').style.display='none';window.scrollTo({top:0,behavior:'smooth'})});update();
+document.querySelector('#continuar').addEventListener('click', () => {
+  const params = new URLSearchParams({
+    ruta: document.querySelector('#ruta').value,
+    fecha: document.querySelector('#fecha').value,
+    hora: document.querySelector('#salida').value.split(' — ')[0],
+    asientos: document.querySelector('#asientos').value,
+    pasajero: 'Invitado',
+    vehiculo: document.querySelector('#salida').selectedOptions[0].textContent.split(' — ')[1] || 'Carro 1'
+  });
+  window.location.href = 'boleto.html?' + params.toString();
+});
+  
 </script></body></html>
