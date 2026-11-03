@@ -6,7 +6,9 @@
 <header><h1>RUTA 200</h1><p>JUNTOS EN EL CAMINO</p><small>TEPIC · MEZCALES · VALLARTA</small></header>
 <div class="hero" id="portada"><img src="portada-ruta200.png" alt="Tarjeta original de RUTA 200 con los automóviles y el contacto" style="width:100%;height:auto;border-radius:12px;display:block" onerror="this.style.display='none'"><h2>¡Bienvenido a RUTA 200!</h2><p>Juntos en el camino · Tepic ↔ Mezcales</p><button id="abrir-reserva">🚗 RESERVAR VIAJE</button><button class="secondary" id="abrir-horarios">🕒 CONSULTAR HORARIOS</button><button class="secondary" id="abrir-whatsapp">💬 WHATSAPP DE ATENCIÓN</button><p style="font-size:13px;margin-top:40px">RUTA 200 · JUNTOS EN EL CAMINO · 33 4845 5057</p></div><main id="contenido" class="hidden"><button class="secondary" id="inicio">← VOLVER AL INICIO</button><div class="notice"><strong>Versión interna de demostración.</strong> No se apartan asientos, no se envían avisos y no se reciben pagos.</div>
 <section class="panel"><h2>🚗 Elige tu viaje</h2>
-<label for="ruta">Recorrido</label><select id="ruta"><option value="ida">Tepic → Mezcales</option><option value="vuelta">Mezcales → Tepic</option></select>
+<label for="nombre">Nombre completo del pasajero</label><input type="text" id="nombre" placeholder="Escribe tu nombre completo" maxlength="80" required>
+<label for="telefono">Teléfono de contacto</label><input type="tel" id="telefono" placeholder="10 dígitos" maxlength="10" inputmode="numeric" required>
+  <label for="ruta">Recorrido</label><select id="ruta"><option value="ida">Tepic → Mezcales</option><option value="vuelta">Mezcales → Tepic</option></select>
 <label for="fecha">Fecha</label><input type="date" id="fecha">
 <label for="salida">Salida (hora local de origen)</label><select id="salida"></select>
 <label for="asientos">Número de asientos</label><select id="asientos"><option>1</option><option>2</option><option>3</option><option>4</option></select>
@@ -32,7 +34,8 @@ document.querySelector('#continuar').addEventListener('click', () => {
    hora:
 document.querySelector('#salida').selectedOptions[0].textContent.split(' - ')[0],
     asientos: document.querySelector('#asientos').value,
-    pasajero: 'Invitado',
+    pasajero: document.querySelector('#nombre').value.trim(), 
+telefono: document.querySelector('#telefono').value.trim(),
     vehiculo: document.querySelector('#salida').selectedOptions[0].textContent.split(' - ')[1]?.trim() || 'Carro 1'
   });
   window.location.href = 'boleto.html?' + params.toString();
