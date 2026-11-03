@@ -11,7 +11,7 @@
 <label for="salida">Salida (hora local de origen)</label><select id="salida"></select>
 <label for="asientos">Número de asientos</label><select id="asientos"><option>1</option><option>2</option><option>3</option><option>4</option></select>
 <div class="row"><strong>Total de ejemplo</strong><span class="total" id="total">$250 MXN</span></div>
-<button id="continuar">VER RESUMEN DEL VIAJE</button></section>
+<button id="continuar">VER MI BOLETO</button></section>
 <section class="panel" id="result" aria-live="polite"><h2>Resumen de demostración</h2><div id="detalle"></div><p class="muted">Este resumen no es un boleto ni una reservación. La disponibilidad es ilustrativa.</p><button id="volver">ELEGIR OTRO VIAJE</button></section>
 <section class="panel"><h2>📲 Atención por WhatsApp</h2><p>33 4845 5057</p><a href="https://wa.me/523348455057" target="_blank" rel="noopener">Contactar a RUTA 200</a></section>
 </main><footer>RUTA 200 · Proyecto privado en desarrollo · Horarios estimados sujetos a confirmación</footer>
@@ -27,12 +27,13 @@ document.querySelector('#continuar').addEventListener('click',()=>{if(!fecha.val
 document.querySelector('#volver').addEventListener('click',()=>{document.querySelector('#result').style.display='none';window.scrollTo({top:0,behavior:'smooth'})});update();
 document.querySelector('#continuar').addEventListener('click', () => {
   const params = new URLSearchParams({
-    ruta: document.querySelector('#ruta').value,
+    ruta:document.querySelector('#ruta').value === 'ida' ? 'Tepic → Mezcales' : 'Mezcales → Tepic',
     fecha: document.querySelector('#fecha').value,
-    hora: document.querySelector('#salida').value.split(' — ')[0],
+   hora:
+document.querySelector('#salida').selectedOptions[0].textContent.split(' - ')[0],
     asientos: document.querySelector('#asientos').value,
     pasajero: 'Invitado',
-    vehiculo: document.querySelector('#salida').selectedOptions[0].textContent.split(' — ')[1] || 'Carro 1'
+    vehiculo: document.querySelector('#salida').selectedOptions[0].textContent.split(' - ')[1]?.trim() || 'Carro 1'
   });
   window.location.href = 'boleto.html?' + params.toString();
 });
