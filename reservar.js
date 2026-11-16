@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id);
 const route=$('ruta'),date=$('fecha'),departure=$('salida'),seats=$('asientos'),button=$('continuar'),status=$('estado-reserva');
 let trips=[],loading=false,busy=false,version=0;
 const origin=()=>route.value==='ida'?'Tepic':'Mezcales';
-function show(){ $('portada').classList.add('hidden');$('contenido').classList.remove('hidden');window.scrollTo(0,0);load(); }
+function show(){ $('portada').classList.add('hidden');$('contenido').classList.remove('hidden');window.scrollTo(0,0);openSecurity();load(); }
 $('abrir-reserva').onclick=show;$('abrir-horarios').onclick=show;
 $('abrir-whatsapp').onclick=()=>window.open('https://wa.me/523348455057','_blank','noopener');
 $('inicio').onclick=()=>{ $('contenido').classList.add('hidden');$('portada').classList.remove('hidden'); };
@@ -81,4 +81,4 @@ function renderTickets(){
 renderTickets();
 setInterval(()=>{if(!document.hidden&&!$('contenido').classList.contains('hidden')&&!busy&&!loading)load();},30000);
 
-setupSms();
+const openSecurity=setupSms();
