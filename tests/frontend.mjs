@@ -68,3 +68,15 @@ console.log('Turnstile: token en SMS y login de operadores; sin token no se env�
 
 const unapproved=await app('reservar.js','reservar.html',()=>ok(trips),{presenceData:{verified:false}});assert.match(unapproved.location.href,/index\.html$/);assert.equal(unapproved.calls.some(c=>c.name==='r200_horarios'),false);assert.equal(app2.get('contenido').classList.contains('hidden'),false);assert.equal(fs.readFileSync(new URL('reservar.html',root),'utf8').includes('id="enviar-sms"'),false);
 console.log('Acceso: teléfono y presencia comprobados antes de consultar viajes; sin aprobación redirige; formulario sin SMS repetido.');
+
+const driverPanel={...panel,administrador:false,horarios:[{id:77,conductor_id:1,vehiculo_id:1,fecha:'2031-01-20',hora_salida:'08:00:00',origen:'Mezcales',destino:'Tepic',cupos_ocupados:0,cupos_totales:4,activo:true}]};
+const driver=await app('admin.js','admin.html',name=>ok(name==='r200_panel'?driverPanel:{creadas:1,ya_publicadas:0}),{sessionData:operator});
+assert.equal(driver.get('crear-panel').hidden,false);
+assert.equal(driver.get('conductor').disabled,true);
+assert.equal(driver.get('conductor').children.length,1);
+const tripText=driver.get('horarios').children[0].children[0].children.map(e=>e.textContent);
+assert.deepEqual(tripText,['Blanca · MG5','Salida: 8 a. m.','20/01/2031','Mezcales → Tepic','0/4 asientos ocupados','Disponible para reservar']);
+driver.get('rol-fecha-1').value='2031-01-20';driver.get('rol-hora-1').value='08:00';
+driver.get('crear').onsubmit({preventDefault(){}});await flush();await flush();
+assert.equal(driver.calls.find(c=>c.name==='r200_crear_rol').body.p_conductor,1);
+console.log('Conductor: publica su carro y ve hora de 12 horas, fecha día/mes/año y asientos separados.');
