@@ -26,3 +26,17 @@ Pruebas de interfaz simulada: `node --experimental-vm-modules tests/frontend.mjs
 El teléfono aún no se verifica por SMS o WhatsApp, y no hay pagos en línea ni avisos automáticos. El enlace privado del boleto permite consultarlo y cancelarlo; compartirlo por WhatsApp requiere una acción del pasajero. La portada general de la flota se conserva.
 
 Nunca incluir contraseñas, llaves privadas ni datos reales de pasajeros en este repositorio.
+
+## Fotos y conductores de la flota
+
+| Vehículo | Conductor | Imagen individual |
+| --- | --- | --- |
+| MG5 blanco (1) | Blanca | mg5-blanco.svg |
+| Versa V-Drive blanco (2) | Tony | versa-vdrive-tony.svg |
+| Vento blanco (3) | Manuel | vento-manuel.svg |
+| Aveo azul persuasión (4) | David | aveo-david.svg |
+| Versa azul (5) | Francisco | versa-francisco.svg |
+
+La asociación usa el identificador del vehículo. El panel muestra una galería y cada salida identifica carro y conductor; la consulta pública muestra fotos, nombres y cupos del horario seleccionado. El pasajero sigue eligiendo horario, con asignación de carro según disponibilidad. El boleto confirmado muestra el conductor del viaje y su vehículo.
+
+Se reutilizaron las imágenes preparadas en los chats anteriores, sin modificar la portada. La migración 005 ya se aplicó a Supabase y conserva las autorizaciones existentes. No se cambiaron nombres, cuentas, horarios ni reservas reales. Las pruebas SQL para las cinco relaciones se revirtieron al terminar; el frontend verifica fotos, nombres, modelos y hora, además de los flujos existentes.
