@@ -1,11 +1,11 @@
 # Prueba aislada de acceso con presencia
 
-Página: `prueba-presencia.html`. No modifica index.html, el formulario de reserva ni la función r200_reservar. La presencia todavía NO es obligatoria para reservar. Antes de activar esa exigencia hay que completar una prueba real en el teléfono del titular y comprobar el estado guardado por AWS/Supabase.
+Página: `prueba-presencia.html`. No modifica index.html, el formulario de reserva ni la función r200_reservar. La presencia todavía NO es obligatoria para reservar. Antes de activar esa exigencia hay que lograr una aprobación real en el teléfono del titular y comprobar el estado guardado por AWS/Supabase.
 
 ## Configuración completada el 16 de noviembre de 2026
 
 - Lambda ruta200-liveness en us-east-1, URL `https://stx3gydourk5mp5tgrnanxnace0drhrj.lambda-url.us-east-1.on.aws/`, autorización de URL NONE y comprobación HMAC en código, BUFFERED, sin CORS. POST real sin firma devuelve 401 Solicitud no autorizada.
-- El titular guardó LIVENESS_SHARED_SECRET y LIVENESS_LAMBDA_URL en los secretos de Supabase. No se copian claves privadas al cliente ni al repositorio. Falta comprobar el HMAC entre servicios con una sesión telefónica real.
+- El titular guardó LIVENESS_SHARED_SECRET y LIVENESS_LAMBDA_URL en los secretos de Supabase. No se copian claves privadas al cliente ni al repositorio. El recorrido real creó tres sesiones, vinculó sus propietarios y consultó resultados mediante la conexión firmada. Ninguna de esas tres pruebas quedó aprobada.
 - Edge Function ruta200-liveness activa con validación de cada JWT en Auth /user, teléfono confirmado y RPC privados. Migraciones 20261116144757 y 20261116145337 aplicadas. El código servidor sigue documentado en el PR #6.
 - Cognito Identity Pool Ruta200Liveness: `us-east-1:21ac92d6-d274-4651-b3b5-e2424d6c3b3b`. Solo invitado, flujo clásico inactivo.
 - Rol `arn:aws:iam::538274759185:role/service-role/Ruta200LivenessInvitados`, política insertada Ruta200IniciarSelfie. La política solicitada permite únicamente rekognition:StartFaceLivenessSession, Resource *, región us-east-1. La captura confirma creación; no se ha inspeccionado de nuevo todo el JSON guardado.
@@ -31,3 +31,11 @@ Pruebas: `node --experimental-vm-modules tests/presencia-client.mjs` comprueba a
 Abrir la página en el mismo Chrome donde se verificó el número. Si no conserva sesión, verificar SMS. Aceptar e iniciar una única prueba con cámara. Consultar resultado si tarda; verificar confirmación privada en DB antes de activar flujo obligatorio. Revisar logs sin exponer video, tokens ni claves si aparece un error. No dar por hecha la integración de HMAC/SDK por el evento de consola probar_configuracion, que no llama Rekognition.
 
 Fuentes: https://ui.docs.amplify.aws/react/connected-components/liveness y https://docs.aws.amazon.com/cognito/latest/developerguide/getting-started-with-identity-pools.html.
+
+## Diagnóstico y reposición de cuota, 16 de noviembre
+
+El titular reportó límite de intentos aun con luz de día. La base confirmó tres intentos asociados a sesiones AWS y cerrados como rechazados, con una consulta real por cada intento. El registro original no conservaba estado AWS ni motivo, por lo que no permite atribuir el rechazo a luz, confianza insuficiente u otra causa.
+
+Migraciones 20261116184550/20261116184703 añaden reintegro administrativo con fecha y motivo obligatorio; la cuota excluye exclusivamente intentos repuestos, sin alterar ni borrar su resultado. Se repusieron tres pruebas acompañadas del titular, conservando los tres rechazos y cero aprobaciones. Los pasajeros siguen sin permiso de escritura directa.
+
+La finalización guarda estado AWS y categoría de resultado (sin puntuación ni imágenes); Edge v3 entrega esa categoría y el cliente distingue prueba incompleta de confianza insuficiente. No se cambió el umbral 90 ni se activó presencia obligatoria. Se necesita un nuevo intento acompañado para diagnosticar y conseguir aprobación. Pruebas: 22 Edge/Lambda, cliente y SQL real con ROLLBACK aprobados; reintegro sin motivo bloqueado, resultado rechazado inmutable y reintegro nunca concede aprobación. Endpoint sigue rechazando sin sesión con401.
