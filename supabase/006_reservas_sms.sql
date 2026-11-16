@@ -1,4 +1,5 @@
--- PREPARADA, NO APLICADA. Activar junto con el frontend SMS.
+-- Aplicada en Supabase el 16-11-2026, tras publicar el frontend SMS.
+-- Reejecutable; el estado y las pruebas se documentan en SMS_ACTIVACION.md.
 -- Conserva reservas, pasajeros, historial, bloqueos, cupos y enlaces de boletos.
 begin;
 create or replace function public.r200_reservar(p_horario bigint,p_nombre text,p_telefono text,p_asientos integer,p_clave text) returns jsonb language plpgsql security definer set search_path='' as $$
