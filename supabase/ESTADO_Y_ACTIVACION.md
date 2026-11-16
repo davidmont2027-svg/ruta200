@@ -2,6 +2,14 @@
 
 Revisión del 15 de noviembre de 2026, hora de Tepic.
 
+## Actualización: publicada y API activada
+
+La activación 002 fue autorizada y ejecutada. La PR #1 se integró en main (merge b9f65a62cec927cb18a67cd048b341100d626afc). GitHub Pages sirve la versión conectada en https://davidmont2027-svg.github.io/ruta200/.
+
+Verificado por navegador: consulta real de horarios responde sin salidas abiertas; selección de regreso y cuatro asientos muestra total de 1000 MXN; admin.html requiere inicio de sesión; boleto.html recupera la reserva sintética cancelada AA9AAFC3-2F61-4A2D-AB7C-6D001CFD135F desde Supabase y muestra su estado correcto.
+
+La comprobación SQL confirma EXECUTE público de r200_reservar y ausencia de SELECT público sobre reservaciones. El horario 22 sigue inactivo, fecha 2026-12-16, hora 08:00, cero cupos ocupados. Todavía falta crear/cancelar una reserva mediante el formulario web con un horario activo controlado y verificar el inicio de sesión del administrador. No hay salidas reales abiertas. Las secciones siguientes documentan la preparación previa; esta actualización es el estado vigente.
+
 ## Ya realizado
 
 - Revisión del proyecto real `ruta200-reservaciones` y del código publicado.
