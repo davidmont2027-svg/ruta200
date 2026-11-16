@@ -1,5 +1,6 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATES=['CREATED','IN_PROGRESS','SUCCEEDED','FAILED','EXPIRED'];
+const FEEDBACK=new Set(['FACE_NOT_VISIBLE','FACE_OBSTRUCTION_DETECTED','LOW_VIDEO_QUALITY_DETECTED','FACE_NOT_ALIGNED','EYES_CLOSED_DETECTED','LOW_LIGHTING_DETECTED','HIGH_LIGHTING_DETECTED']);
 const ORIGIN='https://davidmont2027-svg.github.io';
 export const CONSENT='r200-presencia-v1';
 
@@ -53,7 +54,8 @@ export function makeHandler({getUser,rpc,lambda,ready=()=>true}){
     const result=await lambda({action:'result',userId:user.id,sessionId:attempt.aws_session_id});
     if(!STATES.includes(result?.status)||result.status==='SUCCEEDED'&&(!Number.isFinite(result.confidence)||result.confidence<0||result.confidence>100))throw Error('bad result');
     const saved=await rpc('r200_presencia_finalizar',{p_usuario:user.id,p_intento:body.attemptId,p_estado:result.status,p_confianza:result.status==='SUCCEEDED'?result.confidence:null});
-    return reply(200,{verified:saved.verificado===true,status:saved.estado,reason:saved.motivo});
+    const feedback=saved.verificado!==true&&result.status==='SUCCEEDED'&&Array.isArray(result.feedback)?[...new Set(result.feedback.slice(0,10).filter(code=>FEEDBACK.has(code)))]:[];
+    return reply(200,{verified:saved.verificado===true,status:saved.estado,reason:saved.motivo,...(feedback.length?{feedback}:{})});
    }
    return reply(400,{error:'Solicitud inválida.'});
   }catch(e){
