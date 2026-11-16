@@ -55,7 +55,8 @@ async function checkResult(){
  if(result.verified){approved();return true;}
  if(['rechazado','expirado'].includes(result.status)){
   clearCamera();saveAttempt(null);clearTimeout(timer);screen('selfie');$('consultar').hidden=true;
-  throw Error(result.status==='expirado'?'La prueba venció. Puedes iniciar otra si tienes intentos disponibles.':'No pudimos confirmar tu presencia. Puedes intentar otra vez con buena luz.');
+  const reasons={aws_failed:'La prueba de cámara no se completó correctamente. Hazla tú solo frente a la cámara y sigue todas las indicaciones.',confianza_insuficiente:'No se alcanzó la confianza necesaria para confirmar tu presencia. Mantén el rostro visible y sigue todas las indicaciones.'};
+  throw Error(result.status==='expirado'?'La prueba venció. Puedes iniciar otra si tienes intentos disponibles.':reasons[result.reason]||'No pudimos confirmar tu presencia. Revisa las indicaciones antes de intentar otra vez.');
  }
  say('El resultado aún no está listo. Vuelve a consultar en unos segundos.');return false;
 }
