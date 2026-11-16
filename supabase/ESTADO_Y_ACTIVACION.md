@@ -2,6 +2,14 @@
 
 Revisión del 15 de noviembre de 2026, hora de Tepic.
 
+## Prueba completa desde la web: finalizada
+
+Con autorización específica del usuario, se abrió temporalmente el horario 22 (16 de diciembre de 2026, 08:00 de Tepic) y se completó el formulario publicado con datos sintéticos PRUEBA WEB RUTA 200, teléfono 0000000091, cuatro asientos. La web emitió el folio 8385F327-46CF-4DC4-AD7E-70127224C10A, confirmado por Supabase y total de 1000 MXN.
+
+Una segunda pestaña consultó esa salida y mostró cero asientos, con el botón de reserva deshabilitado. Se canceló desde el botón del boleto y se confirmó el diálogo: el estado cambió a cancelada y la segunda pestaña volvió a mostrar cuatro lugares. Se cerró otra vez el horario 22. Verificación final SQL: activo=false, cupos_ocupados=0, reservas confirmadas de ese horario=0 y ausencias del pasajero de prueba=0. La web dejó de ofrecer la salida. Ambos registros sintéticos cancelados se conservan para trazabilidad.
+
+El flujo público de consulta, reserva, boleto, cancelación y devolución de cupos ya fue probado contra Supabase mediante navegador. Sigue pendiente verificar con el usuario el inicio de sesión operativo del administrador y definir/publicar horarios reales. La verificación de teléfono por SMS y los pagos en línea no forman parte de esta versión.
+
 ## Actualización: publicada y API activada
 
 La activación 002 fue autorizada y ejecutada. La PR #1 se integró en main (merge b9f65a62cec927cb18a67cd048b341100d626afc). GitHub Pages sirve la versión conectada en https://davidmont2027-svg.github.io/ruta200/.
