@@ -53,7 +53,7 @@ export function makeHandler({getUser,rpc,lambda,ready=()=>true}){
     const result=await lambda({action:'result',userId:user.id,sessionId:attempt.aws_session_id});
     if(!STATES.includes(result?.status)||result.status==='SUCCEEDED'&&(!Number.isFinite(result.confidence)||result.confidence<0||result.confidence>100))throw Error('bad result');
     const saved=await rpc('r200_presencia_finalizar',{p_usuario:user.id,p_intento:body.attemptId,p_estado:result.status,p_confianza:result.status==='SUCCEEDED'?result.confidence:null});
-    return reply(200,{verified:saved.verificado===true,status:saved.estado});
+    return reply(200,{verified:saved.verificado===true,status:saved.estado,reason:saved.motivo});
    }
    return reply(400,{error:'Solicitud inválida.'});
   }catch(e){
