@@ -1,47 +1,40 @@
-# Prueba aislada de acceso con presencia
+# Acceso de pasajeros activo: teléfono → selfie → reservar
 
-Página: `prueba-presencia.html`. No modifica index.html, el formulario de reserva ni la función r200_reservar. La presencia todavía NO es obligatoria para reservar. Antes de activar esa exigencia hay que lograr una aprobación real en el teléfono del titular y comprobar el estado guardado por AWS/Supabase.
+Estado al 16 de noviembre de 2026: recorrido publicado y guard servidor aplicado. La portada index.html pide teléfono verificado por SMS con Turnstile y después prueba de presencia. Una sesión telefónica vigente con presencia aprobada por el servidor abre reservar.html directamente. El formulario no repite SMS ni CAPTCHA. Si se cierra o pierde la sesión, se vuelve a autenticar; una aprobación del mismo usuario/teléfono se conserva en servidor. No se promete sesión permanente.
 
-## Configuración completada el 16 de noviembre de 2026
+## Cliente publicado
 
-- Lambda ruta200-liveness en us-east-1, URL `https://stx3gydourk5mp5tgrnanxnace0drhrj.lambda-url.us-east-1.on.aws/`, autorización de URL NONE y comprobación HMAC en código, BUFFERED, sin CORS. POST real sin firma devuelve 401 Solicitud no autorizada.
-- El titular guardó LIVENESS_SHARED_SECRET y LIVENESS_LAMBDA_URL en los secretos de Supabase. No se copian claves privadas al cliente ni al repositorio. El recorrido real creó tres sesiones, vinculó sus propietarios y consultó resultados mediante la conexión firmada. Ninguna de esas tres pruebas quedó aprobada.
-- Edge Function ruta200-liveness activa con validación de cada JWT en Auth /user, teléfono confirmado y RPC privados. Migraciones 20261116144757 y 20261116145337 aplicadas. El código servidor sigue documentado en el PR #6.
-- Cognito Identity Pool Ruta200Liveness: `us-east-1:21ac92d6-d274-4651-b3b5-e2424d6c3b3b`. Solo invitado, flujo clásico inactivo.
-- Rol `arn:aws:iam::538274759185:role/service-role/Ruta200LivenessInvitados`, política insertada Ruta200IniciarSelfie. La política solicitada permite únicamente rekognition:StartFaceLivenessSession, Resource *, región us-east-1. La captura confirma creación; no se ha inspeccionado de nuevo todo el JSON guardado.
-- Prueba real GetId + GetCredentialsForIdentity completada: credenciales temporales emitidas. No se imprimieron ni persistieron; no se crearon sesiones de Rekognition durante esta comprobación.
+- index.html: acceso inicial, consentimiento de video y aviso de luces intermitentes. La aprobación procede siempre de Supabase.
+- presencia.js: comparte el detector con prueba-presencia.html; en portada redirige a reservar.html tras aprobación guardada o nueva.
+- reservar.html/reservar.js: comprueban sesión y presencia antes de mostrar o consultar viajes, rellenan el teléfono confirmado en solo lectura y permiten cerrar sesión. Conservan nombre, recorrido, fecha, horario, asientos, vehículos y boletos.
+- prueba-presencia.html sigue disponible como prueba aislada; su botón a index.html continúa al formulario si la sesión está vigente y aprobada.
+- Los errores de AWS pueden mostrar orientación específica si GetFaceLivenessSessionResults devuelve Feedback. No se muestran puntuaciones ni imágenes al pasajero.
 
-## Cliente
+## Backend activo
 
-- Teléfono → consentimiento → componente oficial FaceLivenessDetectorCore → consulta de resultado al servidor → enlace a reservar.
-- Usa la sesión telefónica existente si está vigente. La pantalla de aprobación solo se muestra con verified === true desde Supabase. El callback de cámara no aprueba nada por sí solo.
-- El backend usa el SessionId guardado bajo el propietario; el navegador solo envía attemptId al consultar. El alta y aprobación siguen exclusivamente en backend.
-- La página advierte sobre luces intermitentes y procesamiento de video por AWS. No se almacena video ni galería de selfies desde el cliente. Las credenciales Cognito viven solo en memoria.
-- Prepara bundle, credenciales y permiso de cámara antes de consumir cuota. Evita doble toque. Conserva requestId para reintentos ambiguos; una sesión ya consumida no se vuelve a montar hasta caducar o cerrar el resultado.
-- No crea reservas ni altera cupos. No enlazada desde la portada mientras se prueba.
+Edge ruta200-liveness v4 valida cada JWT contra Auth /user, teléfono confirmado, consentimiento, dueño de intento/sesión, cuota de 3 intentos en 24h, separación y límite de consultas. Lambda ruta200-liveness en us-east-1 verifica HMAC, usa SDK fijado y entrega únicamente estado/confianza al backend y códigos de feedback permitidos. Claves guardadas en AWS/Supabase, nunca en frontend o repositorio.
 
-## Construir
+Migraciones aplicadas: 20261116144757, 20261116145337, 20261116184550, 20261116184703, 20261116190002 y 20261116193326. Tablas privadas con RLS y sin acceso directo de pasajeros; wrappers de escritura solo service_role, funciones privilegiadas en r200_privado.
 
-En presencia-src: `npm ci --ignore-scripts` y `npm run build`. Dependencias fijadas y package-lock.json versionado. El bundle estático permite que GitHub Pages siga funcionando sin cambiar su pipeline. Se conservan avisos de licencia en presencia-assets/detector.js.LEGAL.txt.
+r200_reservar exige Auth UID y teléfono realmente confirmado; una reserva nueva exige además confirmación de presencia del mismo UID y teléfono. La recuperación idempotente de un boleto existente permanece antes del nuevo guard, después de validar el teléfono, y no crea otra reserva. Permanecen cupos, cancelación hasta 30min antes, suspensión tras 3 ausencias y reactivación administrativa.
 
-Pruebas: `node --experimental-vm-modules tests/presencia-client.mjs` comprueba autenticación, errores, credenciales efímeras, consentimiento, doble toque, liberación de cámara y aprobación exclusiva del servidor con mocks. También pasan los tests SMS y los 21 tests existentes Edge/Lambda. La revisión de navegador confirma pantalla de teléfono en vista previa; Turnstile solo admite el dominio de producción y no se fuerza su validación en localhost.
+Umbral inicial80 solicitado por el titular tras rechazos con90. No demuestra por sí mismo tasas adecuadas de aceptación/rechazo; se necesita seguimiento con dispositivos y condiciones reales. Reintegros administrativos conservan intentos y resultados, requieren fecha/motivo y no conceden aprobación. Se repusieron únicamente tres pruebas acompañadas, sin modificar límites globales.
 
-## Prueba real pendiente
+## Comprobaciones completadas
 
-Abrir la página en el mismo Chrome donde se verificó el número. Si no conserva sesión, verificar SMS. Aceptar e iniciar una única prueba con cámara. Consultar resultado si tarda; verificar confirmación privada en DB antes de activar flujo obligatorio. Revisar logs sin exponer video, tokens ni claves si aparece un error. No dar por hecha la integración de HMAC/SDK por el evento de consola probar_configuracion, que no llama Rekognition.
+- Titular completó prueba real tras cargar ZIP feedback-v1. AWS SUCCEEDED, intento aprobado y confirmación privada guardada el 16/nov a19:22:19Z, con teléfono de Auth confirmado y coincidente. No se aprobó manualmente.
+- ZIP cargado: SHA256base64 Mldqs9S7b6iNd/FZpIVsD06Itj9B9EkTAs8xk/LS6eo=; configuración muestra feedback-v1, clave presente y cero llamadas AWS durante esa comprobación.
+- 24tests Edge/Lambda, pruebas cliente (consentimiento, doble toque, cámara, feedback, redirección exclusiva tras aprobación), y suite frontend de reservas, respuesta perdida, boleto, cancelación, roles y Turnstile aprobados con mocks.
+- SQL real con BEGIN/ROLLBACK: rechaza teléfono sin confirmar, metadata falsa, ausencia de aprobación propia y aprobación ajena; conserva idempotencia incluso si debe renovarse selfie, cupos, cancelación y suspensión. Fixtures y horario sintético revertidos.
+- Publicación PR8 (backend existente) y PR9 (portada/formulario) completadas. GitHub Pages exitoso y navegador confirma que visitar reservar.html sin sesión lleva a index.html con pantalla de teléfono.
+- Después de publicar el frontend se aplicó guard servidor. Consulta real confirma presencia exigida, anon bloqueado, authenticated permitido y aprobación del titular conservada.
+- Pendiente comprobación final del titular del formulario limpio y reserva real posterior al nuevo recorrido. No se crearon ni cancelaron reservas reales durante los tests del agente.
 
-Fuentes: https://ui.docs.amplify.aws/react/connected-components/liveness y https://docs.aws.amazon.com/cognito/latest/developerguide/getting-started-with-identity-pools.html.
+## Configuración y reproducción
 
-## Diagnóstico y reposición de cuota, 16 de noviembre
+Lambda URL: https://stx3gydourk5mp5tgrnanxnace0drhrj.lambda-url.us-east-1.on.aws/ (NONE con HMAC en código, BUFFERED, sin CORS).
+Cognito Identity Pool: us-east-1:21ac92d6-d274-4651-b3b5-e2424d6c3b3b, solo invitado, rol service-role/Ruta200LivenessInvitados con StartFaceLivenessSession limitado a us-east-1. GetId/GetCredentialsForIdentity comprobados sin imprimir ni persistir credenciales temporales.
 
-El titular reportó límite de intentos aun con luz de día. La base confirmó tres intentos asociados a sesiones AWS y cerrados como rechazados, con una consulta real por cada intento. El registro original no conservaba estado AWS ni motivo, por lo que no permite atribuir el rechazo a luz, confianza insuficiente u otra causa.
+Cliente: en presencia-src, npm ci --ignore-scripts y npm run build; dependencias fijadas y lockfile versionado. Lambda: en aws/liveness, npm ci --ignore-scripts y npm run build; comprimir dist/index.mjs e index.mjs.LEGAL.txt en raíz del ZIP. Conservar avisos de licencia.
 
-Migraciones 20261116184550/20261116184703 añaden reintegro administrativo con fecha y motivo obligatorio; la cuota excluye exclusivamente intentos repuestos, sin alterar ni borrar su resultado. Se repusieron tres pruebas acompañadas del titular, conservando los tres rechazos y cero aprobaciones. Los pasajeros siguen sin permiso de escritura directa.
-
-La finalización guarda estado AWS y categoría de resultado (sin puntuación ni imágenes); Edge v3 entrega esa categoría y el cliente distingue prueba incompleta de confianza insuficiente. En ese paso se mantuvo el umbral 90 y la presencia siguió sin ser obligatoria. Se necesita un nuevo intento acompañado para diagnosticar y conseguir aprobación. Pruebas: 22 Edge/Lambda, cliente y SQL real con ROLLBACK aprobados; reintegro sin motivo bloqueado, resultado rechazado inmutable y reintegro nunca concede aprobación. Endpoint sigue rechazando sin sesión con401.
-
-## Ajuste de exigencia solicitado por el titular
-
-Una prueba posterior terminó con AWS SUCCEEDED y confianza insuficiente. El titular pidió bajar la exigencia por la fricción del registro. Se aplicó 20261116190002 para cambiar el umbral inicial de 90 a 80, conservando teléfono confirmado, propietario, caducidad, estado real de AWS, cuota y terminales inmutables. Es un ajuste inicial de prueba; no demuestra todavía una tasa de aceptación o rechazo adecuada. No se aprobó retroactivamente ningún rechazo.
-
-Prueba SQL real con fixtures y ROLLBACK: 79.99 rechaza, 80 aprueba, un rechazo previo no puede reabrirse; fixture revertido. Falta repetir una sola prueba real con el umbral ajustado. Se añadieron indicaciones de brillo máximo y luz uniforme sin sol directo conforme a recomendaciones AWS: https://docs.aws.amazon.com/rekognition/latest/dg/recommendations-liveness.html.
+Fuentes: https://ui.docs.amplify.aws/react/connected-components/liveness , https://docs.aws.amazon.com/rekognition/latest/APIReference/API_FeedbackItem.html y https://docs.aws.amazon.com/rekognition/latest/dg/recommendations-liveness.html .
