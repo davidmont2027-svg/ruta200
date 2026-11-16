@@ -56,7 +56,9 @@ async function checkResult(){
  if(['rechazado','expirado'].includes(result.status)){
   clearCamera();saveAttempt(null);clearTimeout(timer);screen('selfie');$('consultar').hidden=true;
   const reasons={aws_failed:'La prueba de cámara no se completó correctamente. Hazla tú solo frente a la cámara y sigue todas las indicaciones.',confianza_insuficiente:'No se alcanzó la confianza necesaria para confirmar tu presencia. Mantén el rostro visible y sigue todas las indicaciones.'};
-  throw Error(result.status==='expirado'?'La prueba venció. Puedes iniciar otra si tienes intentos disponibles.':reasons[result.reason]||'No pudimos confirmar tu presencia. Revisa las indicaciones antes de intentar otra vez.');
+  const guidance={FACE_NOT_VISIBLE:'AWS no pudo ver tu rostro durante toda la prueba. Mantén el rostro dentro del óvalo.',FACE_OBSTRUCTION_DETECTED:'AWS detectó parte del rostro cubierta. Deja el rostro visible durante toda la prueba.',LOW_VIDEO_QUALITY_DETECTED:'AWS detectó calidad de video insuficiente. Limpia la cámara frontal y mantén el teléfono estable; si persiste, prueba otro celular.',FACE_NOT_ALIGNED:'AWS detectó el rostro desalineado. Coloca el teléfono frente a tu cara y sigue el óvalo.',EYES_CLOSED_DETECTED:'AWS detectó los ojos cerrados durante parte de la prueba. Mantén los ojos abiertos siguiendo las indicaciones.',LOW_LIGHTING_DETECTED:'AWS detectó iluminación insuficiente. Busca luz uniforme frente a tu rostro.',HIGH_LIGHTING_DETECTED:'AWS detectó demasiada luz. Evita el sol directo y los reflejos sobre tu rostro y teléfono.'};
+  const detail=Array.isArray(result.feedback)?result.feedback.slice(0,7).map(code=>guidance[code]).filter(Boolean).join(' '):'';
+  throw Error(result.status==='expirado'?'La prueba venció. Puedes iniciar otra si tienes intentos disponibles.':detail||reasons[result.reason]||'No pudimos confirmar tu presencia. Revisa las indicaciones antes de intentar otra vez.');
  }
  say('El resultado aún no está listo. Vuelve a consultar en unos segundos.');return false;
 }
