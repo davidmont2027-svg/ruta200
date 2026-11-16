@@ -20,8 +20,9 @@ function remember(data){
  if(!saveLocal(storageKey,value))throw new Error('Permite el almacenamiento del sitio para conservar tu sesión.');
  return value;
 }
-export async function sendCode(phone){
- await request('otp',{phone:mexicanPhone(phone),create_user:true,channel:'sms'});
+export async function sendCode(phone,captchaToken){
+ if(!captchaToken)throw new Error('Completa la comprobación de seguridad.');
+ await request('otp',{phone:mexicanPhone(phone),create_user:true,channel:'sms',gotrue_meta_security:{captcha_token:captchaToken}});
 }
 export async function verifyCode(phone,code){
  if(!/^\d{6}$/.test(code))throw new Error('Escribe los 6 dígitos del código.');
