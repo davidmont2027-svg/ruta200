@@ -8,6 +8,7 @@
 <section class="panel"><h2>🚗 Elige tu viaje</h2>
 <label for="nombre">Nombre completo del pasajero</label><input type="text" id="nombre" placeholder="Escribe tu nombre completo" maxlength="80" required>
 <label for="telefono">Teléfono de contacto</label><input type="tel" id="telefono" placeholder="10 dígitos" maxlength="10" inputmode="numeric" required>
+<div class="notice"><strong>Confirma tu teléfono para reservar</strong><p>Te enviaremos un código por SMS. Usaremos tu número para el acceso, el boleto y el historial de viajes.</p><button type="button" id="enviar-sms">ENVIAR CÓDIGO SMS</button><label for="codigo-sms">Código de 6 dígitos</label><input id="codigo-sms" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button type="button" id="verificar-sms">CONFIRMAR TELÉFONO</button><button type="button" id="cerrar-pasajero">CERRAR MI SESIÓN</button><p id="estado-sms" role="status" aria-live="polite"></p></div>
   <label for="ruta">Recorrido</label><select id="ruta"><option value="ida">Tepic → Mezcales</option><option value="vuelta">Mezcales → Tepic</option></select>
 <label for="fecha">Fecha</label><input type="date" id="fecha">
 <label for="salida">Salida (hora local de origen)</label><select id="salida"></select><div id="carros-horario" aria-live="polite"></div>
@@ -17,5 +18,5 @@
 <section class="panel" hidden id="result" aria-live="polite"><h2>Resumen de demostración</h2><div id="detalle"></div><p class="muted">Este resumen no es un boleto ni una reservación. La disponibilidad es ilustrativa.</p><button id="volver">ELEGIR OTRO VIAJE</button></section>
 <section class="panel"><h2>📲 Atención por WhatsApp</h2><p>33 4845 5057</p><a href="https://wa.me/523348455057" target="_blank" rel="noopener">Contactar a RUTA 200</a></section>
 <section class="panel"><h2>Mis boletos</h2><div id="mis-boletos"></div><p class="muted">Conserva el enlace privado de tu boleto. Las reservaciones quedan guardadas en RUTA 200.</p></section></main><footer>RUTA 200 · Proyecto privado en desarrollo · <a href="admin.html">Acceso de administración y conductores</a></footer>
-<script type="module" src="reservar.js?v=20261115-flota3"></script></body></html>
+<script type="module" src="reservar.js?v=20261116-sms1"></script></body></html>
 
