@@ -2,7 +2,7 @@ import {rpc,saveTicket,ticketLink,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id),key=location.hash.slice(1);let ticket,busy=false;
 function render(t){
- ticket=t;const foto=fotosVehiculos[t.vehiculo_id];const img=$('foto-carro');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}
+ ticket=t;const foto=fotosVehiculos[t.vehiculo_id];const img=$('foto-carro');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}$('conductor-boleto').textContent='Conductor: '+(t.conductor||'Por confirmar');
  for(const [id,value] of Object.entries({folio:'R200-'+t.folio.toUpperCase(),fecha:t.fecha,hora:t.hora+' (hora de '+t.origen+')',origen:t.origen,destino:t.destino,asientos:t.asientos+' lugar(es)',pasajero:t.pasajero,telefono:t.telefono,vehiculo:t.vehiculo,total:'$'+t.total+' MXN'}))$(id).textContent=value;
  $('folio').style.fontSize='15px';$('folio').style.overflowWrap='anywhere';
  $('confirmacion').textContent=t.estado==='confirmada'?'🎟️ RESERVACIÓN CONFIRMADA':t.estado==='cancelada'?'RESERVACIÓN CANCELADA':'AUSENCIA REGISTRADA';

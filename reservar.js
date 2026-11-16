@@ -1,4 +1,5 @@
 import {rpc,today,token,readLocal,saveLocal,saveTicket,ticketLink,message} from './r200.js';
+import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);
 const route=$('ruta'),date=$('fecha'),departure=$('salida'),seats=$('asientos'),button=$('continuar'),status=$('estado-reserva');
 let trips=[],loading=false,busy=false,version=0;
@@ -18,13 +19,28 @@ function options(){
  else if(!departure.value)message(status,'No hay un vehículo con esa cantidad de lugares. Prueba con menos asientos u otra fecha.');
  else message(status,'Hora local de '+origin()+'. Disponibilidad sujeta a confirmación al reservar.');
  $('total').textContent='$'+Number(seats.value)*250+' MXN';
+ renderTripCards();
 }
+function renderTripCards(){
+ const list=$('carros-horario');list.replaceChildren();
+ const selected=trips.filter(t=>!departure.value||t.hora===departure.value);
+ for(const trip of selected){const card=document.createElement('article');card.className='carro-horario';
+  const photo=fotosVehiculos[trip.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;card.append(img);}
+  const title=document.createElement('strong');title.textContent=trip.conductor||'Conductor por confirmar';
+  const car=document.createElement('p');car.textContent=trip.vehiculo||'Vehículo asignado';
+  const details=document.createElement('p');details.textContent=trip.hora+' (hora de '+origin()+') · '+trip.disponibles+' lugar(es)';
+  card.append(title,car,details);list.append(card);
+ }
+ if(selected.length){const note=document.createElement('p');note.className='muted';note.textContent='Elige tu horario. El carro se asigna al confirmar, según los lugares disponibles.';list.append(note);}
+}
+departure.onchange=renderTripCards;
 async function load(){
  if(busy)return;const current=++version;loading=true;button.disabled=true;
  date.min=today(origin());if(!date.value||date.value<date.min)date.value=date.min;
+ $('carros-horario').replaceChildren();
  message(status,'Consultando asientos disponibles…');
  try{const data=await rpc('r200_horarios',{p_fecha:date.value,p_origen:origin()});if(current!==version)return;trips=data;loading=false;options();}
- catch(e){if(current!==version)return;trips=[];departure.replaceChildren();loading=false;message(status,e.message,true);}
+ catch(e){if(current!==version)return;trips=[];departure.replaceChildren();$('carros-horario').replaceChildren();loading=false;message(status,e.message,true);}
 }
 date.value=today();date.min=date.value;date.onchange=load;route.onchange=load;seats.onchange=options;
 $('actualizar').onclick=load;
