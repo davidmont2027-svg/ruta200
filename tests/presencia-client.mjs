@@ -54,4 +54,8 @@ screen.startResult({verified:false,attemptId:'attempt-test',sessionId:'session-t
 assert.equal(screen.stopped,1,'Permiso de cámara se libera antes del detector');assert.equal(screen.el('camara-panel').hidden,false);
 await screen.mount.onAnalysisComplete();assert.equal(screen.el('listo-panel').hidden,true,'Completar cámara no aprueba por sí solo');assert.equal(screen.el('iniciar').disabled,true,'No reutilizar sesión consumida');
 screen.result({verified:true,status:'aprobado'});await screen.el('consultar').onclick();assert.equal(screen.el('listo-panel').hidden,false);assert.equal(screen.stored.size,0);assert.ok(screen.removed>0);
+const failedScreen=await ui();failedScreen.el('consentimiento').checked=true;
+const failingStart=failedScreen.el('iniciar').onclick();await new Promise(resolve=>setImmediate(resolve));failedScreen.startResult({verified:false,attemptId:'test',sessionId:'test',expiresAt:new Date(Date.now()+180000).toISOString()});await failingStart;
+failedScreen.result({verified:false,status:'rechazado',reason:'confianza_insuficiente',feedback:['LOW_VIDEO_QUALITY_DETECTED','unknown']});await failedScreen.mount.onAnalysisComplete();
+assert.match(failedScreen.el('estado').textContent,/calidad de video insuficiente/);assert.ok(!failedScreen.el('estado').textContent.includes('unknown'));assert.equal(failedScreen.el('listo-panel').hidden,true);
 console.log('Presencia cliente: sesión, errores, credenciales temporales, consentimiento, doble toque, liberación de cámara y aprobación exclusiva del servidor: OK');
