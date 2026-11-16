@@ -1,3 +1,5 @@
+import {passengerSession,samePhone} from './pasajero-auth.js';
+import {setupSms} from './sms-ui.js';
 import {rpc,today,token,readLocal,saveLocal,saveTicket,ticketLink,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);
@@ -52,17 +54,20 @@ button.onclick=async()=>{
  if(!name.reportValidity()||!phone.reportValidity()||!departure.value)return;
  const amount=Number(seats.value);const candidates=trips.filter(t=>t.hora===departure.value&&t.disponibles>=amount);
  if(!Number.isInteger(amount)||amount<1||amount>4||!candidates.length){await load();return;}
+ let session;busy=true;
+ try{session=await passengerSession();}catch(e){busy=false;message(status,e.message,true);return;}
+ if(!session||!samePhone(session,phone.value)){busy=false;message(status,'Confirma por SMS este teléfono antes de reservar.',true);return;}
  const signature=JSON.stringify([name.value.trim(),phone.value.trim(),date.value,origin(),departure.value,amount]);
  const pending=readLocal('r200-pendiente',null);
  // Tras una respuesta perdida, conservar también el horario original aunque cambien los cupos.
  const intent=pending?.signature===signature?pending:{signature,key:token(),horario:candidates[0].id};
  const body={p_horario:intent.horario,p_nombre:name.value.trim(),p_telefono:phone.value.trim(),p_asientos:amount,p_clave:intent.key};
- if(!saveLocal('r200-pendiente',intent)){message(status,'Permite el almacenamiento de este sitio para conservar y recuperar tu boleto antes de reservar.',true);return;}
+ if(!saveLocal('r200-pendiente',intent)){busy=false;message(status,'Permite el almacenamiento de este sitio para conservar y recuperar tu boleto antes de reservar.',true);return;}
  busy=true;button.disabled=true;button.textContent='CONFIRMANDO…';
  for(const el of [name,phone,route,date,departure,seats])el.disabled=true;
  message(status,'Confirmando tu reserva. Espera la respuesta…');
  try{
-  const ticket=await rpc('r200_reservar',body);saveTicket(intent.key,ticket);saveLocal('r200-pendiente',null);
+  const ticket=await rpc('r200_reservar',body,session.access_token);saveTicket(intent.key,ticket);saveLocal('r200-pendiente',null);
   location.href=ticketLink(intent.key);
  }catch(e){message(status,e.message+' Tu solicitud pendiente puede revisarse desde Mis boletos.',true);}
  finally{busy=false;for(const el of [name,phone,route,date,departure,seats])el.disabled=false;button.textContent='RESERVAR GRATIS';button.disabled=!departure.value;renderTickets();}
@@ -75,3 +80,5 @@ function renderTickets(){
 }
 renderTickets();
 setInterval(()=>{if(!document.hidden&&!$('contenido').classList.contains('hidden')&&!busy&&!loading)load();},30000);
+
+setupSms();
