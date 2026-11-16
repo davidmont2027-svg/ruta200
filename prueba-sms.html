@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Prueba de acceso por SMS | RUTA 200</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#f5f2e9;background:#0b0b0b}*{box-sizing:border-box}body{margin:0}header{padding:28px 20px;text-align:center;background:linear-gradient(140deg,#080808,#272012);border-bottom:2px solid #c99a39}header h1{margin:0;color:#f6cb66;letter-spacing:2px}header p{margin:5px 0;color:#dfcc9c}main{max-width:520px;padding:22px 18px;margin:auto}.panel{background:#1b1b1b;border:1px solid #80632d;border-radius:18px;padding:20px}h2{font-size:23px;margin-top:0;color:#f3c866}p{line-height:1.55}label{display:block;margin:20px 0 8px}input,button{font:inherit;width:100%;padding:14px;border-radius:10px}input{background:#292929;color:white;border:1px solid #8d763f}button{background:#f3c866;color:#16120b;border:0;font-weight:750;margin-top:12px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}.secondary{background:transparent;color:#e6d2a1;border:1px solid #80632d;font-size:14px}input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid white}a{color:#f3c866}.notice{padding:12px;border-left:3px solid #c99a39;background:#292315;border-radius:6px}.muted{font-size:14px;color:#bdb8a9}#estado-sms{min-height:28px;overflow-wrap:anywhere}footer{padding:22px;text-align:center;font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>RUTA 200</h1><p>Juntos en el camino</p></header>
+<main>
+<section class="panel" aria-labelledby="titulo">
+<h2 id="titulo">Prueba de acceso por SMS</h2>
+<p class="notice">Esta página solo confirma tu teléfono. No crea una reservación ni aparta asientos.</p>
+<p class="muted">Usa tu propio número. Al solicitar el código recibirás un SMS para comprobar que tienes acceso a ese teléfono.</p>
+<label for="telefono">Número de celular de México (+52)</label>
+<input id="telefono" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="10 dígitos" maxlength="10" required>
+<div id="captcha-pasajero" style="min-height:70px;margin-top:18px"></div>
+<button id="reintentar-captcha" class="secondary" type="button">REPETIR COMPROBACIÓN DE SEGURIDAD</button>
+<button id="enviar-sms" type="button">ENVIAR CÓDIGO SMS</button>
+<label for="codigo-sms">Código recibido</label>
+<input id="codigo-sms" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6 dígitos" maxlength="6">
+<button id="verificar-sms" type="button">CONFIRMAR TELÉFONO</button>
+<p id="estado-sms" role="status" aria-live="polite"></p>
+<button id="cerrar-pasajero" type="button" class="secondary">CERRAR MI SESIÓN</button>
+</section>
+<p class="muted">No compartas el código recibido. Si usas un celular prestado, cierra tu sesión al terminar.</p>
+<a href="index.html">← Volver a RUTA 200</a>
+</main>
+<footer>RUTA 200 · Tepic–Mezcales</footer>
+<script type="module">import {setupSms} from './sms-ui.js';setupSms()();</script>
+</body>
+</html>
