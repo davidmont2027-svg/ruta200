@@ -1,13 +1,13 @@
 -- Ejecutar DESPUÉS de 001, DENTRO de BEGIN ... ROLLBACK. No conserva datos de prueba.
 do $$
-declare h bigint; h2 bigint; h3 bigint; h4 bigint; rid bigint; r jsonb; original jsonb; n integer; actor uuid; telefono text:='0000000001'; clave text:=repeat('a',64); rechazo boolean;
+declare h bigint; h2 bigint; h3 bigint; h4 bigint; rid bigint; r jsonb; original jsonb; n integer; actor uuid; v_tel text:='0000000001'; clave text:=repeat('a',64); rechazo boolean;
 begin
  select usuario_id into actor from public.administradores limit 1;
  perform set_config('request.jwt.claim.sub',actor::text,true);
  insert into public.horarios(vehiculo_id,conductor_id,origen,destino,fecha,hora_salida,cupos_totales) values(1,1,'Tepic','Mezcales',current_date+3,'08:00',4) returning id into h;
- r:=public.r200_reservar(h,'Prueba RUTA 200',telefono,3,clave); original:=r;
+ r:=public.r200_reservar(h,'Prueba RUTA 200',v_tel,3,clave); original:=r;
  if r->>'estado'<>'confirmada' or (r->>'total')::integer<>750 then raise exception 'TEST: confirmación/total'; end if;
- if public.r200_reservar(h,'Prueba RUTA 200',telefono,3,clave)<>original then raise exception 'TEST: idempotencia'; end if;
+ if public.r200_reservar(h,'Prueba RUTA 200',v_tel,3,clave)<>original then raise exception 'TEST: idempotencia'; end if;
  if public.r200_boleto(clave)<>original then raise exception 'TEST: recuperación boleto'; end if;
  rechazo:=false;
  begin perform public.r200_reservar(h,'Otra persona','0000000002',2,repeat('b',64)); exception when others then if sqlerrm like '%asientos disponibles%' then rechazo:=true; else raise; end if; end;
@@ -17,8 +17,8 @@ begin
  r:=public.r200_cancelar(clave); if r->>'estado'<>'cancelada' then raise exception 'TEST: cancelación'; end if;
  perform public.r200_cancelar(clave);
  select cupos_ocupados into n from public.horarios where id=h; if n<>1 then raise exception 'TEST: cancelación debe liberar exactamente 3'; end if;
- if exists(select 1 from public.historial_ausencias where telefono_pasajero=telefono) then raise exception 'TEST: cancelación contó ausencia'; end if;
- perform public.r200_reservar(h,'Prueba RUTA 200',telefono,3,repeat('c',64));
+ if exists(select 1 from public.historial_ausencias where telefono_pasajero=v_tel) then raise exception 'TEST: cancelación contó ausencia'; end if;
+ perform public.r200_reservar(h,'Prueba RUTA 200',v_tel,3,repeat('c',64));
  rechazo:=false; begin perform public.r200_boleto(repeat('f',64)); exception when others then if sqlerrm='Boleto no encontrado' then rechazo:=true; else raise; end if; end;
  if not rechazo then raise exception 'TEST: boleto sin clave'; end if;
  -- Cancelación tardía: crea a futuro, mueve la salida a 20 minutos desde ahora.
