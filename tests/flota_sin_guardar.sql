@@ -1,3 +1,4 @@
+rollback;
 begin;
 -- Añade nombres de conductor y descripción del carro; conserva permisos existentes.
 create or replace function public.r200_horarios(p_fecha date,p_origen text) returns jsonb language sql stable security definer set search_path='' as $$
@@ -31,7 +32,7 @@ do $$ declare v record; h bigint; r bigint; ticket jsonb; lista jsonb; fila json
 begin
  select usuario_id into actor from public.administradores limit 1;
  perform set_config('request.jwt.claim.sub',actor::text,true);
- for v in select v.id,c.id conductor_id,c.nombre from public.vehiculos v join public.conductores c on c.vehiculo_id=v.id where v.id between 1 and 5 loop
+ for v in select w.id,c.id conductor_id,c.nombre from public.vehiculos w join public.conductores c on c.vehiculo_id=w.id where w.id between 1 and 5 loop
   insert into public.horarios(vehiculo_id,conductor_id,origen,destino,fecha,hora_salida,cupos_totales,activo) values(v.id,v.conductor_id,'Tepic','Mezcales','2031-02-01','04:00',4,true) returning id into h;
   insert into public.reservaciones(horario_id,nombre_pasajero,telefono_pasajero,asientos) values(h,'PRUEBA IDENTIDAD VEHÍCULO','0000000'||lpad(v.id::text,3,'0'),1) returning id into r;
   ticket:=public.r200_ticket_interno(r);
