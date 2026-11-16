@@ -1,0 +1,8 @@
+{
+ "name":"ruta200-liveness-servidor",
+ "private":true,
+ "type":"module",
+ "scripts":{"build":"node build.mjs"},
+ "dependencies":{"@aws-sdk/client-rekognition":"3.1169.0"},
+ "devDependencies":{"esbuild":"0.28.2"}
+}
