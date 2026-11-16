@@ -1,15 +1,29 @@
-import {passengerSession,samePhone} from './pasajero-auth.js';
-import {setupSms} from './sms-ui.js';
+import {passengerSession,samePhone,logoutPassenger} from './pasajero-auth.js';
+import {presenceRequest} from './presencia-api.js';
 import {rpc,today,token,readLocal,saveLocal,saveTicket,ticketLink,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);
 const route=$('ruta'),date=$('fecha'),departure=$('salida'),seats=$('asientos'),button=$('continuar'),status=$('estado-reserva');
-let trips=[],loading=false,busy=false,version=0;
+let trips=[],loading=false,busy=false,version=0,accessReady=false;
 const origin=()=>route.value==='ida'?'Tepic':'Mezcales';
-function show(){ $('portada').classList.add('hidden');$('contenido').classList.remove('hidden');window.scrollTo(0,0);openSecurity();load(); }
-$('abrir-reserva').onclick=show;$('abrir-horarios').onclick=show;
-$('abrir-whatsapp').onclick=()=>window.open('https://wa.me/523348455057','_blank','noopener');
-$('inicio').onclick=()=>{ $('contenido').classList.add('hidden');$('portada').classList.remove('hidden'); };
+async function checkAccess(){
+ if(busy)return;busy=true;accessReady=false;button.disabled=true;$('contenido').classList.add('hidden');
+ $('reintentar-acceso').disabled=true;message($('estado-acceso'),'Comprobando tu acceso…');
+ try{
+  const session=await passengerSession();
+  if(!session){location.replace('index.html');return;}
+  const result=await presenceRequest({action:'status'});
+  if(!result.verified){location.replace('index.html');return;}
+  const phone=String(session.phone).replace(/\D/g,'').slice(2);
+  if(!/^\d{10}$/.test(phone)){location.replace('index.html');return;}
+  $('telefono').value=phone;accessReady=true;$('contenido').classList.remove('hidden');
+  $('estado-acceso').hidden=true;$('reintentar-acceso').hidden=true;
+ }catch(e){message($('estado-acceso'),e.message,true);}
+ finally{busy=false;$('reintentar-acceso').disabled=false;}
+ if(accessReady)await load();
+}
+$('reintentar-acceso').onclick=checkAccess;
+$('cerrar-pasajero').onclick=async()=>{if(busy)return;busy=true;try{await logoutPassenger();}finally{location.replace('index.html');}};
 function options(){
  const previous=departure.value;departure.replaceChildren();
  const groups=new Map();for(const t of trips){if(!groups.has(t.hora))groups.set(t.hora,[]);groups.get(t.hora).push(t);}
@@ -37,7 +51,7 @@ function renderTripCards(){
 }
 departure.onchange=renderTripCards;
 async function load(){
- if(busy)return;const current=++version;loading=true;button.disabled=true;
+ if(busy||!accessReady)return;const current=++version;loading=true;button.disabled=true;
  date.min=today(origin());if(!date.value||date.value<date.min)date.value=date.min;
  $('carros-horario').replaceChildren();
  message(status,'Consultando asientos disponibles…');
@@ -47,7 +61,7 @@ async function load(){
 date.value=today();date.min=date.value;date.onchange=load;route.onchange=load;seats.onchange=options;
 $('actualizar').onclick=load;
 button.onclick=async()=>{
- if(busy||loading)return;
+ if(busy||loading||!accessReady)return;
  const name=$('nombre'),phone=$('telefono');
  name.setCustomValidity(name.value.trim().length>=2?'':'Escribe el nombre completo.');
  phone.setCustomValidity(/^\d{10}$/.test(phone.value.trim())?'':'Escribe un teléfono de 10 dígitos.');
@@ -56,7 +70,7 @@ button.onclick=async()=>{
  if(!Number.isInteger(amount)||amount<1||amount>4||!candidates.length){await load();return;}
  let session;busy=true;
  try{session=await passengerSession();}catch(e){busy=false;message(status,e.message,true);return;}
- if(!session||!samePhone(session,phone.value)){busy=false;message(status,'Confirma por SMS este teléfono antes de reservar.',true);return;}
+ if(!session||!samePhone(session,phone.value)){busy=false;location.replace('index.html');return;}
  const signature=JSON.stringify([name.value.trim(),phone.value.trim(),date.value,origin(),departure.value,amount]);
  const pending=readLocal('r200-pendiente',null);
  // Tras una respuesta perdida, conservar también el horario original aunque cambien los cupos.
@@ -81,4 +95,4 @@ function renderTickets(){
 renderTickets();
 setInterval(()=>{if(!document.hidden&&!$('contenido').classList.contains('hidden')&&!busy&&!loading)load();},30000);
 
-const openSecurity=setupSms();
+await checkAccess();
