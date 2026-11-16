@@ -17,7 +17,7 @@ Web de reservaciones Tepic ↔ Mezcales con Supabase. Tarifa: $250 MXN por asien
 
 La reserva web de cuatro lugares, boleto, disponibilidad agotada en otra pestaña y cancelación con devolución de lugares fueron probados en Supabase. El rol de seis salidas (tres vueltas), reintento, reversión ante error y permisos se probaron en una transacción que se revirtió; las pruebas de frontend incluyen la foto individual y el formulario de rol.
 
-Las migraciones 001, 002, 003 y 004 ya fueron aplicadas al proyecto existente. No repetir 001. Los cambios de rol y foto están en main; al registrar esta nota GitHub Pages estaba esperando terminar una publicación anterior, por lo que no se ha confirmado aún su visualización en la web publicada.
+Las migraciones 001, 002, 003 y 004 ya fueron aplicadas al proyecto existente. No repetir 001. Los cambios de rol y foto están publicados en GitHub Pages. Verificado por navegador: el panel carga «Publicar rol de salidas», una fila inicial y el botón «AGREGAR OTRA SALIDA»; el boleto del vehículo 1 obtiene su identificador desde Supabase y muestra cargada correctamente la imagen individual del MG5 blanco. La comprobación del formulario de rol con sesión simulada y las pruebas SQL de seis salidas también pasaron. El administrador debe recargar el panel para recibir la nueva interfaz.
 
 Pruebas de interfaz simulada: `node --experimental-vm-modules tests/frontend.mjs`. Los scripts SQL de pruebas deben ejecutarse con BEGIN/ROLLBACK según sus comentarios, sin conservar salidas ficticias.
 
