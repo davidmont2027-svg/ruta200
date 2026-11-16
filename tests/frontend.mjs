@@ -23,7 +23,7 @@ async function app(file,html,respond,{hash='',sessionData=null}={}){
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const ok=data=>({ok:true,json:async()=>data});
-const ticket={vehiculo_id:1,folio:'00000000-0000-4000-8000-000000000001',estado:'confirmada',pasajero:'<img src=x onerror=alert(1)>',telefono:'3111234567',asientos:3,total:750,origen:'Tepic',destino:'Mezcales',fecha:'2030-11-20',hora:'08:00',salida:'2030-11-20T15:00:00Z',cancelable_hasta:'2030-11-20T14:30:00Z',vehiculo:'Chevrolet Aveo 2026 Azul'};
+const ticket={vehiculo_id:1,conductor:'Blanca',folio:'00000000-0000-4000-8000-000000000001',estado:'confirmada',pasajero:'<img src=x onerror=alert(1)>',telefono:'3111234567',asientos:3,total:750,origen:'Tepic',destino:'Mezcales',fecha:'2030-11-20',hora:'08:00',salida:'2030-11-20T15:00:00Z',cancelable_hasta:'2030-11-20T14:30:00Z',vehiculo:'Chevrolet Aveo 2026 Azul'};
 const trips=[{id:101,hora:'08:00',disponibles:2},{id:102,hora:'08:00',disponibles:4}];
 let app1=await app('reservar.js','index.html',()=>ok([]));app1.get('ruta').value='ida';app1.get('asientos').value='1';await app1.get('abrir-reserva').onclick();await flush();assert.equal(app1.get('continuar').disabled,true);assert.match(app1.get('estado-reserva').textContent,/No hay salidas/);
 let resolveBooking;const app2=await app('reservar.js','index.html',(name)=>name==='r200_horarios'?ok(trips):new Promise(resolve=>resolveBooking=resolve));app2.get('ruta').value='ida';app2.get('asientos').value='3';app2.get('abrir-reserva').onclick();await flush();assert.equal(app2.get('salida').options.length,1);assert.equal(app2.get('continuar').disabled,false);
@@ -45,3 +45,13 @@ const failed=await app('admin.js','admin.html',name=>name==='r200_panel'?ok(pane
 failed.get('rol-fecha-1').value='2031-01-20';failed.get('rol-hora-1').value='04:00';failed.get('agregar-salida').onclick();failed.get('rol-fecha-2').value='2031-01-20';failed.get('rol-hora-2').value='04:30';failed.get('crear').onsubmit({preventDefault(){}});await flush();await flush();assert.match(failed.get('status').textContent,/Salida 2/);assert.equal(failed.get('rol-filas').children.length,2);
 assert.equal(view.get('foto-carro').src,'vehiculos/mg5-blanco.svg');
 console.log('Rol de seis salidas y tres vueltas, publicación conjunta, borrador conservado ante error y foto MG5 verificados.');
+
+const fleetNames=['Blanca','Tony','Manuel','David','Francisco'];
+const fleetModels=['MG5 Blanco','Versa V-Drive Blanco','Vento Blanco','Aveo Azul persuasión','Versa Azul'];
+const fleetPaths=['mg5-blanco.svg','versa-vdrive-tony.svg','vento-manuel.svg','aveo-david.svg','versa-francisco.svg'];
+const rows=fleetNames.map((conductor,i)=>({id:200+i,vehiculo_id:i+1,vehiculo:fleetModels[i],conductor,hora:'08:00',disponibles:4}));
+const cars=await app('reservar.js','index.html',()=>ok(rows));cars.get('ruta').value='ida';cars.get('asientos').value='1';cars.get('abrir-reserva').onclick();await flush();
+assert.equal(cars.get('carros-horario').children.length,6);
+for(let i=0;i<5;i++){const card=cars.get('carros-horario').children[i];assert.equal(card.children[0].src,'vehiculos/'+fleetPaths[i]);assert.equal(card.children[1].textContent,fleetNames[i]);assert.equal(card.children[2].textContent,fleetModels[i]);}
+assert.equal(view.get('conductor-boleto').textContent,'Conductor: Blanca');
+console.log('Cinco carros: fotos, nombres, modelos y hora vinculados correctamente; nombres en boleto verificados.');
