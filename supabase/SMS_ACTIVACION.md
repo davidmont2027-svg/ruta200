@@ -1,32 +1,29 @@
-# Registro por SMS — validado, listo para activar en reservas
+# Registro por SMS — activo en reservas
 
-Twilio Verify fue configurado por el titular en Supabase. El Auth Token nunca se incluye en código, repositorio ni registros.
+El 16 de noviembre de 2026 se publicó el formulario de reservas con SMS (PR #3, commit de integración 1f3b66471fb719f62d370c269b1db60cf4921d53) y se aplicó permanentemente 006 en Supabase, tras verificar que la página publicada mostraba los controles SMS.
 
 ## Comportamiento
 
-El pasajero solicita un código SMS, lo confirma y conserva su sesión en el dispositivo. Las solicitudes de nuevos códigos tienen una espera visual de 60 segundos. Al caducar el acceso, se renueva con el refresh token, sin SMS por cada reserva. En un equipo compartido debe cerrar su sesión.
+El pasajero confirma su teléfono mediante Supabase Auth y Twilio Verify. La sesión se conserva en el dispositivo y se renueva con refresh token, sin un SMS por cada reserva. La reserva envía el token autenticado. La función SQL exige auth.uid(), teléfono confirmado en auth.users y coincidencia con el teléfono mexicano de la reserva; nunca confía en user_metadata ni en una marca local. anon no puede crear reservas. Los enlaces privados de boletos conservan sus funciones de consulta y cancelación. Los clientes con una versión antigua deben recargar e iniciar sesión.
 
-La migración 006 exige auth.uid(), teléfono confirmado en auth.users y coincidencia exacta entre el teléfono mexicano de la reserva y el de la sesión. No confía en user_metadata, valores enviados por el navegador ni en indicadores locales. Revoca el permiso de reservar para anon; las otras funciones públicas de consulta y boleto mantienen sus permisos. Se conservan la lógica transaccional de cupos, idempotencia, historial y suspensión.
+Se conserva la lógica existente de cupos transaccionales, idempotencia, cancelación, historial y suspensión por tres ausencias. La activación sustituyó la función y ajustó sus permisos; no creó ni modificó reservaciones ni salidas.
 
-## Turnstile configurado y pruebas reales
+## Configuración y evidencia
 
-La clave pública proporcionada por el titular está en captcha.js. El script oficial se carga explícitamente; la Secret Key nunca se coloca en archivos. El envío OTP y el acceso por contraseña de operadores remiten gotrue_meta_security.captcha_token a Supabase. Los tokens vencidos o ausentes bloquean el envío en la interfaz y se reinician después de cada intento. Supabase debe validar en servidor con Turnstile habilitado; el navegador no sustituye esa validación.
+- El titular configuró Twilio Verify sin revelar el Auth Token. Phone y nuevos registros habilitados; límite confirmado de 10 SMS/h para todo el proyecto.
+- El perfil individual Ruta 200 en Twilio aparece Aprobado. La primera prueba real de SMS fue confirmada en video.
+- Turnstile usa la Site Key pública de captcha.js. La Secret Key fue pegada directamente por el titular en Supabase y nunca se guardó en el repositorio.
+- La captura de Supabase muestra CAPTCHA habilitado, proveedor Turnstile, secreto oculto y guardado exitoso.
+- El titular confirmó acceso real de administración tras activar CAPTCHA y repitió la verificación SMS con éxito; la captura muestra Teléfono confirmado.
+- El acceso de operadores con Turnstile se publicó en PR #5; tanto OTP como contraseña remiten gotrue_meta_security.captcha_token.
+- La comprobación SQL posterior a la activación devolvió SMS exigido en reservas y true para anon_bloqueado, autenticado_permitido y exige_telefono_confirmado.
+- En el formulario publicado, una prueba sin sesión y con número sintético mostró Confirma por SMS este teléfono antes de reservar, sin crear una reserva.
 
-El titular confirmó Phone habilitado, nuevos registros habilitados y un límite de 10 SMS por hora para todo el proyecto. El 16 de noviembre de 2026 creó el perfil individual Ruta 200 en Twilio; la captura lo muestra Aprobado. Tras ello recibió un SMS real desde la página prueba-sms.html y su video termina con «Teléfono confirmado. Ya puedes reservar.». El video confirma envío, recepción y verificación reales a través de Supabase/Twilio. La prueba no crea ninguna reserva.
+La espera visual de 60 segundos entre SMS no sustituye el límite del servidor. México está permitido en Twilio; las capturas también permitían otros países, y esa configuración no se ha restringido.
 
-El acceso de operadores con Turnstile se publicó por separado en PR #5; conserva los roles y operaciones. El titular guardó CAPTCHA activado con Turnstile y Secret Key directamente en Supabase (captura de éxito e interruptor verde). Confirmó un inicio de sesión real en administración y posteriormente un nuevo SMS verificado; la captura muestra «Teléfono confirmado». No se ha ensayado todavía una solicitud real sin token contra el servidor. El formulario de reservas y la migración 006 están listos para publicación coordinada.
+## Validación
 
-## Antes de activar
-
-1. Confirmar Phone habilitado, proveedor Twilio Verify, confirmaciones habilitadas, credenciales guardadas y números/OTP de prueba vacíos.
-2. Confirmar el límite guardado de envíos en Supabase Auth, publicar y probar Turnstile en pasajeros y operadores, y revisar restricciones geográficas apropiadas en Twilio. No activar el interruptor CAPTCHA hasta publicar ambos formularios. Después el titular configura la Secret Key directamente en Supabase y se prueba el rechazo real sin token y la aceptación con token válido. La espera visual de 60 segundos no es un control de seguridad del servidor. Actualmente México está permitido; otros países también estaban permitidos en las capturas y aún no se han restringido.
-3. Envío y confirmación reales aprobados en prueba-sms.html. Código incorrecto, expiración y reenvío se cubren con API simulada; no se han comprobado todos esos casos con SMS real.
-4. Pruebas SQL con rollback completadas para identidad, permisos, cupos y suspensión. La concurrencia entre transacciones con la nueva validación SMS no se ha repetido; el control de cupos sigue usando el trigger transaccional existente ya probado previamente.
-5. Coordinar publicación del frontend y aplicación de 006 para que las versiones viejas sin sesión no queden como vía alternativa. Tras 006, los clientes viejos necesitan recargar la página e iniciar sesión. Los boletos existentes conservan sus enlaces de consulta y cancelación.
-
-## Validación realizada
-
-Pruebas JavaScript locales con API simulada; no envían mensajes ni gastan saldo:
+Tres suites JavaScript con API simulada aprobadas:
 
 ```sh
 node --experimental-vm-modules tests/frontend.mjs
@@ -34,4 +31,12 @@ node --experimental-vm-modules tests/sms-auth.mjs
 node --experimental-vm-modules tests/captcha.mjs
 ```
 
-La migración SQL fue probada en Supabase dentro de una transacción con ROLLBACK, junto con fixtures sintéticos no visibles para otras transacciones. Pasaron los permisos anon/authenticated, el rechazo sin identidad y sin teléfono confirmado (incluso con user_metadata falsificado), teléfono ajeno, reserva correcta, idempotencia, cupo máximo de cuatro, cancelación con liberación y suspensión histórica. La salida confirmó que se revirtieron usuarios/horario de prueba y se restauraron función y permisos originales. No se ha aplicado permanentemente. Script reproducible: tests/sms-rollback-completo.sql. La prueba SQL no comprueba recepción del SMS ni validación real de Turnstile. El SMS real se confirmó por separado en el video del titular y se repitió con éxito tras habilitar CAPTCHA en Supabase; el acceso de administrador también fue confirmado por el titular. La prueba negativa real sin token aún está pendiente. Esta rama no activa la prueba de vida AWS: esa integración requiere sesiones de liveness ligadas al usuario confirmado y validación del resultado por el servidor. No se debe marcar a nadie como verificado a partir de un resultado proporcionado por el navegador.
+La migración fue probada previamente en Supabase dentro de una transacción con fixtures sintéticos y ROLLBACK: permisos, ausencia de identidad, teléfono sin confirmar incluso con metadatos falsificados, teléfono ajeno, reserva correcta, idempotencia, máximo de cuatro, cancelación/liberación y suspensión histórica. La salida confirmó fixtures revertidos y función/permisos originales restaurados. Script reproducible: tests/sms-rollback-completo.sql. Después se aplicó 006 permanentemente con comprobaciones dentro de la transacción.
+
+## Pendientes
+
+- Una reserva real desde el formulario publicado con sesión SMS hasta mostrar su boleto; no se ha creado una reserva real durante la activación.
+- Prueba negativa real de CAPTCHA sin token contra el servidor. La aceptación con token y CAPTCHA habilitado se comprobó con las pruebas del titular; la ausencia del token solo se cubre con API simulada en las suites locales.
+- Código incorrecto, expiración y reenvío están cubiertos con API simulada; no se han ensayado todos esos casos con SMS real.
+- Concurrencia entre transacciones con la nueva validación SMS no repetida; conserva el trigger de cupos probado previamente.
+- AWS Face Liveness todavía no está integrado. Requiere sesiones ligadas al usuario confirmado y validación del resultado en servidor. Nunca marcar verificación a partir de una respuesta proporcionada por el navegador.
