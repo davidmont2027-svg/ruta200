@@ -18,6 +18,7 @@ Se conserva la lógica existente de cupos transaccionales, idempotencia, cancela
 - El acceso de operadores con Turnstile se publicó en PR #5; tanto OTP como contraseña remiten gotrue_meta_security.captcha_token.
 - La comprobación SQL posterior a la activación devolvió SMS exigido en reservas y true para anon_bloqueado, autenticado_permitido y exige_telefono_confirmado.
 - En el formulario publicado, una prueba sin sesión y con número sintético mostró Confirma por SMS este teléfono antes de reservar, sin crear una reserva.
+- El titular completó una reserva real tras verificar por SMS. Sus capturas muestran boleto confirmado con folio, 3 asientos, $750 MXN, Tepic–Mezcales a las 11:00 del 16-11-2026 y MG5 de Blanca. Confirmó después haber cancelado la reserva de prueba; no se ha comprobado por separado el contador de asientos tras esa cancelación.
 
 La espera visual de 60 segundos entre SMS no sustituye el límite del servidor. México está permitido en Twilio; las capturas también permitían otros países, y esa configuración no se ha restringido.
 
@@ -35,7 +36,6 @@ La migración fue probada previamente en Supabase dentro de una transacción con
 
 ## Pendientes
 
-- Una reserva real desde el formulario publicado con sesión SMS hasta mostrar su boleto; no se ha creado una reserva real durante la activación.
 - Prueba negativa real de CAPTCHA sin token contra el servidor. La aceptación con token y CAPTCHA habilitado se comprobó con las pruebas del titular; la ausencia del token solo se cubre con API simulada en las suites locales.
 - Código incorrecto, expiración y reenvío están cubiertos con API simulada; no se han ensayado todos esos casos con SMS real.
 - Concurrencia entre transacciones con la nueva validación SMS no repetida; conserva el trigger de cupos probado previamente.
