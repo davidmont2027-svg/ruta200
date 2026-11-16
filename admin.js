@@ -19,12 +19,27 @@ function p(text){const e=document.createElement('p');e.textContent=text;return e
 function action(label,fn){const e=document.createElement('button');e.className='small';e.textContent=label;e.onclick=()=>mutate(fn);return e;}
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
- try{data=await call('r200_panel');$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.administrador;render();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ try{data=await call('r200_panel');$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;render();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
  catch(e){if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
 }
+function fechaVisible(fecha){const [y,m,d]=fecha.split('-');return d+'/'+m+'/'+y;}
+function horaVisible(hora){const [h,m]=hora.split(':');const n=Number(h);return (n%12||12)+(m==='00'?'':':'+m)+' '+(n<12?'a. m.':'p. m.');}
 function render(){
- const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected)$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
- renderFleet();const hs=$('horarios');hs.replaceChildren();for(const h of data.horarios){const a=document.createElement('article');const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.style.cssText='width:130px;height:145px;object-fit:contain;float:right;margin:0 0 12px 12px;border-radius:10px';a.append(img);a.style.overflow='hidden';}a.append(p((h.conductor_nombre||data.conductores.find(c=>c.id===h.conductor_id)?.nombre||'Conductor por confirmar')+' · '+(h.vehiculo_nombre||'Vehículo '+h.vehiculo_id)),p(h.fecha+' · '+h.hora_salida.slice(0,5)+' · '+h.origen+' → '+h.destino),p(h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados · '+(h.activo?'Abierta':'Cerrada')));if(data.administrador&&h.activo)a.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));hs.append(a);}if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
+ const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
+ $('conductor').disabled=!data.administrador;
+ renderFleet();const hs=$('horarios');hs.replaceChildren();
+ const ordenadas=[...data.horarios].sort((a,b)=>Number(b.activo)-Number(a.activo)||a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida));
+ for(const h of ordenadas){
+  const a=document.createElement('article');a.className='salida-card';
+  const info=document.createElement('div');info.className='salida-info';
+  const c=data.conductores.find(c=>c.id===h.conductor_id),v=data.vehiculos.find(v=>v.id===h.vehiculo_id);
+  const title=document.createElement('strong');title.textContent=(h.conductor_nombre||c?.nombre||'Conductor por confirmar')+' · '+(v?.modelo||h.vehiculo_nombre||'Vehículo '+h.vehiculo_id);
+  info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino),p(h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados'));
+  const estado=p(!h.activo?'Cerrada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':'Disponible para reservar');estado.className='pill';info.append(estado);a.append(info);
+  const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';a.append(img);}
+  if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
+  hs.append(a);
+ }if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
  actualizarFoto();renderReservations();renderPassengers();
 }
 function renderFleet(){
@@ -72,7 +87,7 @@ $('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{
  if(!filas.length)throw new Error('Agrega al menos una salida al rol.');
  const salidas=filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}));
  if(salidas.some(s=>!s.fecha||!s.hora||s.fecha<today(s.origen)))throw new Error('Completa las fechas y horas futuras de todas las salidas.');
- const resumen=salidas.map((s,i)=>(i+1)+'. '+s.fecha+' · '+s.hora+' · '+s.origen+' → '+(s.origen==='Tepic'?'Mezcales':'Tepic')).join('\n');
+ const resumen=salidas.map((s,i)=>(i+1)+'. '+fechaVisible(s.fecha)+' · '+horaVisible(s.hora)+' · '+s.origen+' → '+(s.origen==='Tepic'?'Mezcales':'Tepic')).join('\n');
  if(!confirm('¿Publicar estas '+salidas.length+' salidas de '+c.nombre+'?\n\n'+resumen+'\n\nHoras locales de cada origen. Serán reservables al publicar.'))return;
  const controls=[...$('crear').querySelectorAll('input,select')];for(const el of controls)el.disabled=true;
  try{const result=await call('r200_crear_rol',{p_conductor:c.id,p_salidas:salidas});$('rol-filas').replaceChildren();filas=[];nuevaFila();guardarRol();message($('rol-estado'),'Rol publicado: '+result.creadas+' salidas nuevas; '+result.ya_publicadas+' ya estaban publicadas.');}
