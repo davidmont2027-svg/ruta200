@@ -1,7 +1,12 @@
+import {createCaptcha} from './captcha.js';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);let session=null,data=null,busy=false;
 try{session=JSON.parse(sessionStorage.getItem('r200-operador'));}catch{}
+let loginCaptcha;
+function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
+$('reintentar-captcha-operador').onclick=()=>security().reset().catch(e=>message($('status'),e.message,true));
+
 function saveSession(s){session=s;try{s?sessionStorage.setItem('r200-operador',JSON.stringify(s)):sessionStorage.removeItem('r200-operador');}catch{}}
 async function access(){
  if(!session)throw new Error('Inicia sesión para continuar.');
@@ -15,7 +20,7 @@ function action(label,fn){const e=document.createElement('button');e.className='
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
  try{data=await call('r200_panel');$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.administrador;render();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
- catch(e){if(!session){$('panel').hidden=true;$('login-panel').hidden=false;}message($('status'),e.message,true);}
+ catch(e){if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
 }
 function render(){
  const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected)$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
@@ -40,8 +45,8 @@ function renderPassengers(){
  if(data.administrador&&person.suspendido)a.append(action('Dar segunda oportunidad',async()=>{const reason=prompt('Motivo de la reactivación acordada con el pasajero:');if(reason)await call('r200_reactivar',{p_telefono:person.telefono,p_motivo:reason});}));list.append(a);
  }if(!list.children.length)list.textContent='No hay pasajeros que mostrar.';
 }
-$('login').onsubmit=async e=>{e.preventDefault();$('entrar').disabled=true;try{const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;}};
-$('logout').onclick=async()=>{const old=session;saveSession(null);data=null;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});message($('status'),'Sesión cerrada.');};
+$('login').onsubmit=async e=>{e.preventDefault();if($('entrar').disabled)return;$('entrar').disabled=true;try{const captchaToken=await security().token();const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value,gotrue_meta_security:{captcha_token:captchaToken}})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;security().reset().catch(()=>{});}};
+$('logout').onclick=async()=>{const old=session;saveSession(null);data=null;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
 $('refresh').onclick=load;$('buscar').oninput=renderReservations;$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
@@ -73,4 +78,4 @@ $('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{
  try{const result=await call('r200_crear_rol',{p_conductor:c.id,p_salidas:salidas});$('rol-filas').replaceChildren();filas=[];nuevaFila();guardarRol();message($('rol-estado'),'Rol publicado: '+result.creadas+' salidas nuevas; '+result.ya_publicadas+' ya estaban publicadas.');}
  finally{for(const el of controls)el.disabled=false;}
  });};
-if(session)load();
+if(session)load();else security();
