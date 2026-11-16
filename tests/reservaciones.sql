@@ -4,6 +4,15 @@ declare h bigint; h2 bigint; h3 bigint; h4 bigint; rid bigint; r jsonb; original
 begin
  select usuario_id into actor from public.administradores limit 1;
  perform set_config('request.jwt.claim.sub',actor::text,true);
+ if (public.r200_panel()->>'administrador')::boolean is distinct from true then raise exception 'TEST: panel administrador'; end if;
+ h4:=public.r200_crear_horario(1,1,current_date+8,'08:00','Tepic');
+ rechazo:=false; begin perform public.r200_crear_horario(1,1,current_date+8,'09:00','Tepic'); exception when others then if sqlerrm like '%40 minutos%' then rechazo:=true; else raise; end if; end;
+ if not rechazo then raise exception 'TEST: horarios superpuestos'; end if;
+ perform public.r200_cerrar_horario(h4);
+ rechazo:=false; begin perform public.r200_reservar(h4,'Prueba cerrado','0000000009',1,repeat('9',64)); exception when others then if sqlerrm like '%inactivo%' then rechazo:=true; else raise; end if; end;
+ if not rechazo then raise exception 'TEST: horario cerrado aceptó reserva'; end if;
+ rechazo:=false; begin perform public.r200_reservar(h4,'Prueba cinco','0000000009',5,repeat('8',64)); exception when others then if sqlerrm like '%Revisa nombre%' then rechazo:=true; else raise; end if; end;
+ if not rechazo then raise exception 'TEST: cinco asientos'; end if;
  insert into public.horarios(vehiculo_id,conductor_id,origen,destino,fecha,hora_salida,cupos_totales) values(1,1,'Tepic','Mezcales',current_date+3,'08:00',4) returning id into h;
  r:=public.r200_reservar(h,'Prueba RUTA 200',v_tel,3,clave); original:=r;
  if r->>'estado'<>'confirmada' or (r->>'total')::integer<>750 then raise exception 'TEST: confirmación/total'; end if;
@@ -53,5 +62,9 @@ begin
  perform set_config('request.jwt.claim.sub','',true);
  rechazo:=false; begin perform public.r200_panel(); exception when others then if sqlerrm='Acceso no autorizado' then rechazo:=true; else raise; end if; end;
  if not rechazo then raise exception 'TEST: panel abierto'; end if;
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+ rechazo:=false; begin perform public.r200_panel(); exception when others then if sqlerrm='Acceso no autorizado' then rechazo:=true; else raise; end if; end;
+ if not rechazo then raise exception 'TEST: usuario ajeno accedió al panel'; end if;
+ perform set_config('request.jwt.claim.sub',actor::text,true);
 end $$;
 select 'PRUEBAS SQL CORRECTAS: cupos, reintentos, boleto privado, cancelación, ausencias, suspensión, corrección, reactivación y horarios' resultado;
