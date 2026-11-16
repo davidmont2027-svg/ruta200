@@ -1,28 +1,28 @@
 # RUTA 200 — Juntos en el camino
 
-Aplicación privada de reservaciones para seis vehículos de la ruta Tepic ↔ Mezcales.
+Web de reservaciones Tepic ↔ Mezcales con Supabase. Tarifa: $250 MXN por asiento, pago al abordar; máximo 4 pasajeros por vehículo.
 
-## Estado
-Proyecto creado. **No está publicado, no recibe reservas reales ni procesa pagos.**
+## Operación
 
-## Reglas acordadas
-- 6 vehículos de propietarios diferentes; 4 asientos por salida.
-- 4 tramos por vehículo al día (2 viajes redondos), 24 salidas y 96 lugares diarios en total.
-- $250 MXN por asiento y tramo.
-- Primera salida desde Tepic de los carros 1–6: 04:00, 05:00, 06:00, 07:00, 08:00 y 09:00, respectivamente.
-- Cada tramo dura 2 h 30 min; 40 min entre tramos.
-- Mostrar horas locales correctamente: Mezcales va una hora adelante de Tepic.
-- Reservación sin contraseña para el pasajero, con nombre y WhatsApp verificado.
-- Pago al abordar primero; pagos en línea por propietario más adelante, sujetos a validación del proveedor.
-- Panel privado de cada conductor y panel general exclusivo del administrador.
-- Imagen de marca: negro y dorado, logotipo «RUTA 200», lema «Juntos en el camino», fotografía original de la tarjeta.
-- Pruebas internas antes de abrir al público.
+- El administrador arma el rol agregando o quitando salidas por conductor y vehículo. No se fija a dos vueltas; permite tres o más según el horario.
+- Cada fila elige fecha, hora local de origen y sentido. Se conserva la validación de 2 h 30 de recorrido y 40 min de margen para evitar superponer viajes del mismo carro.
+- El rol se revisa y publica en una operación. Si falla una salida, no se guardan las nuevas de ese envío. Reintentar no duplica las salidas idénticas ya publicadas.
+- La base tiene cinco vehículos registrados; no se ha inventado un sexto.
+- Reservas atómicas y boletos con enlace privado. Cancelación hasta 30 minutos antes; libera lugares sin borrar el historial.
+- Tres ausencias sin cancelar suspenden el número. Solo el administrador puede corregir incidencias y conceder una segunda oportunidad; la suspensión no vence automáticamente.
+- Conductores autorizados consultan sus viajes y pasajeros, además del historial compartido.
+- El MG5 blanco (vehículo 1) tiene su imagen individual, recuperada del trabajo anterior del usuario. Los demás vehículos no muestran una imagen de flota como si fuera su foto individual.
 
-## Próximos pasos
-1. Crear interfaz web móvil y alojarla en entorno privado de pruebas.
-2. Conectar base de datos y autenticación segura.
-3. Evitar sobreventa con operación atómica al reservar asientos.
-4. Probar dos teléfonos con una reserva compartida y cancelación.
-5. Revisar permisos, seguro y seguridad de las jornadas antes del lanzamiento.
+## Validación y publicación
 
-**Nunca incluir contraseñas, llaves privadas ni datos de pasajeros en este repositorio.**
+La reserva web de cuatro lugares, boleto, disponibilidad agotada en otra pestaña y cancelación con devolución de lugares fueron probados en Supabase. El rol de seis salidas (tres vueltas), reintento, reversión ante error y permisos se probaron en una transacción que se revirtió; las pruebas de frontend incluyen la foto individual y el formulario de rol.
+
+Las migraciones 001, 002, 003 y 004 ya fueron aplicadas al proyecto existente. No repetir 001. Los cambios de rol y foto están en main; al registrar esta nota GitHub Pages estaba esperando terminar una publicación anterior, por lo que no se ha confirmado aún su visualización en la web publicada.
+
+Pruebas de interfaz simulada: `node --experimental-vm-modules tests/frontend.mjs`. Los scripts SQL de pruebas deben ejecutarse con BEGIN/ROLLBACK según sus comentarios, sin conservar salidas ficticias.
+
+## Límites actuales
+
+El teléfono aún no se verifica por SMS o WhatsApp, y no hay pagos en línea ni avisos automáticos. El enlace privado del boleto permite consultarlo y cancelarlo; compartirlo por WhatsApp requiere una acción del pasajero. La portada general de la flota se conserva.
+
+Nunca incluir contraseñas, llaves privadas ni datos reales de pasajeros en este repositorio.
