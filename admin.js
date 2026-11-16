@@ -1,4 +1,5 @@
 import {API,KEY,rpc,today,message} from './r200.js';
+import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);let session=null,data=null,busy=false;
 try{session=JSON.parse(sessionStorage.getItem('r200-operador'));}catch{}
 function saveSession(s){session=s;try{s?sessionStorage.setItem('r200-operador',JSON.stringify(s)):sessionStorage.removeItem('r200-operador');}catch{}}
@@ -17,9 +18,9 @@ async function load(){
  catch(e){if(!session){$('panel').hidden=true;$('login-panel').hidden=false;}message($('status'),e.message,true);}
 }
 function render(){
- const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected)$('conductor').value=selected;
+ const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected)$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
  const hs=$('horarios');hs.replaceChildren();for(const h of data.horarios){const a=document.createElement('article');a.append(p(h.fecha+' · '+h.hora_salida.slice(0,5)+' · '+h.origen+' → '+h.destino),p(h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados · '+(h.activo?'Abierta':'Cerrada')));if(data.administrador&&h.activo)a.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));hs.append(a);}if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
- renderReservations();renderPassengers();
+ actualizarFoto();renderReservations();renderPassengers();
 }
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');
@@ -38,6 +39,34 @@ function renderPassengers(){
 $('login').onsubmit=async e=>{e.preventDefault();$('entrar').disabled=true;try{const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;}};
 $('logout').onclick=async()=>{const old=session;saveSession(null);data=null;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});message($('status'),'Sesión cerrada.');};
 $('refresh').onclick=load;$('buscar').oninput=renderReservations;$('buscar-pasajero').oninput=renderPassengers;
-$('fecha').min=today();$('fecha').value=today();$('origen').onchange=()=>{const min=today($('origen').value);$('fecha').min=min;if($('fecha').value<min)$('fecha').value=min;};
-$('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{const c=data.conductores.find(x=>x.id===Number($('conductor').value));if(!c)throw new Error('Selecciona un conductor.');if(!confirm('¿Publicar esta salida para que los pasajeros puedan reservar?'))return;await call('r200_crear_horario',{p_vehiculo:c.vehiculo_id,p_conductor:c.id,p_fecha:$('fecha').value,p_hora:$('hora').value,p_origen:$('origen').value});});};
+let filas=[],filaId=0;
+function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
+function actualizarFoto(){const c=data?.conductores.find(x=>x.id===Number($('conductor').value));const foto=fotosVehiculos[c?.vehiculo_id];const img=$('foto-vehiculo');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}}
+$('conductor').onchange=()=>{actualizarFoto();guardarRol();};
+function nuevaFila(valores={}){
+ const id=++filaId,wrap=document.createElement('article'),grid=document.createElement('div');grid.className='grid';
+ const fila={wrap};for(const [campo,titulo] of [['origen','Origen'],['fecha','Fecha'],['hora','Hora de salida']]){
+  const box=document.createElement('div'),label=document.createElement('label'),input=document.createElement(campo==='origen'?'select':'input');
+  input.id='rol-'+campo+'-'+id;label.htmlFor=input.id;label.textContent=titulo+' · Salida '+id;
+  if(campo==='origen'){for(const origen of ['Tepic','Mezcales']){const opt=document.createElement('option');opt.value=origen;opt.textContent=origen;input.append(opt);}input.value=valores.origen||'Tepic';}
+  else{input.type=campo==='fecha'?'date':'time';input.required=true;input.value=valores[campo]||(campo==='fecha'?today(valores.origen):'');}
+  fila[campo]=input;input.onchange=()=>{fila.fecha.min=today(fila.origen.value);guardarRol();};box.append(label,input);grid.append(box);
+ }
+ fila.fecha.min=today(fila.origen.value);const remove=document.createElement('button');remove.type='button';remove.className='small';remove.textContent='Quitar esta salida';
+ remove.onclick=()=>{filas=filas.filter(f=>f!==fila);wrap.remove();guardarRol();};wrap.append(grid,remove);filas.push(fila);$('rol-filas').append(wrap);return fila;
+}
+$('agregar-salida').onclick=()=>{const last=filas.at(-1);nuevaFila(last?{fecha:last.fecha.value,origen:last.origen.value==='Tepic'?'Mezcales':'Tepic'}:{});guardarRol();};
+let borrador=null;try{borrador=JSON.parse(sessionStorage.getItem('r200-rol-borrador'));}catch{}
+for(const s of borrador?.salidas?.length?borrador.salidas:[{}])nuevaFila(s);
+$('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{
+ const c=data.conductores.find(x=>x.id===Number($('conductor').value));if(!c)throw new Error('Selecciona un conductor.');
+ if(!filas.length)throw new Error('Agrega al menos una salida al rol.');
+ const salidas=filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}));
+ if(salidas.some(s=>!s.fecha||!s.hora||s.fecha<today(s.origen)))throw new Error('Completa las fechas y horas futuras de todas las salidas.');
+ const resumen=salidas.map((s,i)=>(i+1)+'. '+s.fecha+' · '+s.hora+' · '+s.origen+' → '+(s.origen==='Tepic'?'Mezcales':'Tepic')).join('\n');
+ if(!confirm('¿Publicar estas '+salidas.length+' salidas de '+c.nombre+'?\n\n'+resumen+'\n\nHoras locales de cada origen. Serán reservables al publicar.'))return;
+ const controls=[...$('crear').querySelectorAll('input,select')];for(const el of controls)el.disabled=true;
+ try{const result=await call('r200_crear_rol',{p_conductor:c.id,p_salidas:salidas});$('rol-filas').replaceChildren();filas=[];nuevaFila();guardarRol();message($('rol-estado'),'Rol publicado: '+result.creadas+' salidas nuevas; '+result.ya_publicadas+' ya estaban publicadas.');}
+ finally{for(const el of controls)el.disabled=false;}
+ });};
 if(session)load();
