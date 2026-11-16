@@ -1,6 +1,7 @@
 import {createHmac, timingSafeEqual} from 'node:crypto';
 
 const REGION='us-east-1';
+const FEEDBACK=new Set(['FACE_NOT_VISIBLE','FACE_OBSTRUCTION_DETECTED','LOW_VIDEO_QUALITY_DETECTED','FACE_NOT_ALIGNED','EYES_CLOSED_DETECTED','LOW_LIGHTING_DETECTED','HIGH_LIGHTING_DETECTED']);
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const reply=(statusCode,body)=>({statusCode,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'},body:JSON.stringify(body)});
 let client;
@@ -19,7 +20,7 @@ export function makeHandler({request=awsRequest,env=process.env,now=Date.now}={}
   const configured=typeof secret==='string'&&/^[A-Za-z0-9_-]{32,128}$/.test(secret);
   if(!event?.requestContext){
    if(event?.accion!=='probar_configuracion')throw new Error('Solo se permite probar_configuracion desde la consola.');
-   return {servicio:'ruta200-liveness',region:REGION,clave_configurada:configured,llamadas_aws:0};
+   return {servicio:'ruta200-liveness',version:'feedback-v1',region:REGION,clave_configurada:configured,llamadas_aws:0};
   }
   if(event.requestContext.http?.method!=='POST')return reply(405,{error:'Método no permitido.'});
   if(!configured)return reply(503,{error:'Servicio no disponible.'});
@@ -51,7 +52,8 @@ export function makeHandler({request=awsRequest,env=process.env,now=Date.now}={}
     const confidence=data.Status==='SUCCEEDED'&&Number.isFinite(data.Confidence)&&data.Confidence>=0&&data.Confidence<=100?data.Confidence:null;
     if(data.Status==='SUCCEEDED'&&confidence===null)return reply(502,{error:'No se pudo consultar el resultado.'});
     // No transmitir imágenes, datos de auditoría ni respuestas completas del SDK.
-    return reply(200,{status:data.Status,confidence});
+    const feedback=data.Status==='SUCCEEDED'&&Array.isArray(data.Feedback)?[...new Set(data.Feedback.slice(0,10).map(item=>item?.Code).filter(code=>FEEDBACK.has(code)))]:[];
+    return reply(200,{status:data.Status,confidence,...(feedback.length?{feedback}:{})});
    }catch{return reply(502,{error:'No se pudo consultar el resultado.'});}
   }
   return reply(400,{error:'Solicitud inválida.'});
