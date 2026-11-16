@@ -1,0 +1,2 @@
+alter table public.r200_presencia_intentos drop constraint r200_reintegro_con_motivo;
+alter table public.r200_presencia_intentos add constraint r200_reintegro_con_motivo check ((cuota_reintegrada_at is null and motivo_reintegro is null) or (cuota_reintegrada_at is not null and motivo_reintegro is not null and length(trim(motivo_reintegro)) between 5 and 300));
