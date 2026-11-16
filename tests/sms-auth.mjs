@@ -7,7 +7,7 @@ function load(name){if(modules.has(name))return modules.get(name);const m=new vm
 const entry=load('pasajero-auth.js');await entry.link(s=>load(s.replace('./','')));await entry.evaluate();const auth=entry.namespace;
 assert.equal(auth.mexicanPhone('3111234567'),'+523111234567');
 assert.throws(()=>auth.mexicanPhone('123'));
-await auth.sendCode('3111234567');assert.equal(calls.at(-1).body.phone,'+523111234567');assert.equal(calls.at(-1).body.channel,'sms');assert.equal(calls.at(-1).headers.apikey.startsWith('sb_publishable_'),true);
+await auth.sendCode('3111234567','captcha-test-only');assert.equal(calls.at(-1).body.phone,'+523111234567');assert.equal(calls.at(-1).body.channel,'sms');assert.equal(calls.at(-1).body.gotrue_meta_security.captcha_token,'captcha-test-only');await assert.rejects(auth.sendCode('3111234567'),/seguridad/);assert.equal(calls.at(-1).headers.apikey.startsWith('sb_publishable_'),true);
 await assert.rejects(auth.verifyCode('3111234567','12'));assert.equal(calls.length,1);
 respond=()=>({ok:false,json:async()=>({msg:'Código inválido'})});await assert.rejects(auth.verifyCode('3111234567','123456'),/Código inválido/);assert.equal(saved.size,0);
 const session={access_token:'access-only-test',refresh_token:'refresh-only-test',expires_in:3600,user:{phone:'523111234567',phone_confirmed_at:'2026-11-16T00:00:00Z'}};
