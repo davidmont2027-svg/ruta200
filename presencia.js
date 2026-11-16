@@ -3,6 +3,7 @@ import {createCaptcha} from './captcha.js';
 import {presenceRequest,guestCredentials,CONSENT} from './presencia-api.js';
 
 const $=id=>document.getElementById(id);
+const production=document.body?.dataset?.entry==='production';
 const storageKey='r200-presencia-prueba';
 let busy=false,captcha,phone='',attempt=null,unmount=null,timer=null,nextSend=0;
 const say=(text,error=false)=>{$('estado').textContent=text;$('estado').style.color=error?'#ffb6b6':'#f3d58c';};
@@ -26,7 +27,7 @@ function holdConsumedAttempt(){
   timer=setTimeout(()=>{if(!busy){saveAttempt(null);$('iniciar').disabled=false;$('consultar').hidden=true;say('Ya puedes iniciar otra prueba.');}},remaining+1000);
  }
 }
-function approved(){clearCamera();clearTimeout(timer);saveAttempt(null);screen('listo');say('Verificación confirmada por el servidor.');}
+function approved(){clearCamera();clearTimeout(timer);saveAttempt(null);screen('listo');say('Verificación confirmada por el servidor.');if(production)location.replace('reservar.html');}
 async function enterSelfie(){
  screen('selfie');$('cerrar').hidden=false;say('Comprobando tu verificación…');
  const status=await presenceRequest({action:'status'});

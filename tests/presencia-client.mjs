@@ -26,11 +26,11 @@ const credentials=await api.guestCredentials();assert.equal(count,2);assert.equa
 reply={ok:true,json:async()=>({IdentityId:'test',Credentials:{Expiration:0}})};await assert.rejects(api.guestCredentials(),/temporal/);
 
 const uiSource=await readFile(new URL('../presencia.js',import.meta.url),'utf8');
-async function ui(initialVerified=false){
- const elements=new Map(),stored=new Map(),requests=[];
+async function ui(initialVerified=false,production=false){
+ const elements=new Map(),stored=new Map(),requests=[],redirects=[];
  const el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,disabled:false,value:'',checked:false,textContent:'',style:{},setAttribute(){},removeAttribute(){}});return elements.get(id);};
  let result={verified:false,status:'iniciado'},mount,stopped=0,cameraRemoved=0,resolveStart;
- const sandbox=vm.createContext({console,Date,JSON,Number,Boolean,Error,String,Promise,setTimeout:()=>1,clearTimeout(){},crypto:{randomUUID:()=> 'test-id'},document:{getElementById:el},sessionStorage:{getItem:k=>stored.get(k),setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},window:{addEventListener(){}},navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++;}}]})}}});
+ const sandbox=vm.createContext({console,Date,JSON,Number,Boolean,Error,String,Promise,setTimeout:()=>1,clearTimeout(){},crypto:{randomUUID:()=> 'test-id'},document:{body:{dataset:{entry:production?'production':'test'}},getElementById:el},location:{replace:path=>redirects.push(path)},sessionStorage:{getItem:k=>stored.get(k),setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},window:{addEventListener(){}},navigator:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop(){stopped++;}}]})}}});
  const vendor=new vm.SyntheticModule(['mountDetector'],function(){this.setExport('mountDetector',(_el,options)=>{mount=options;return ()=>cameraRemoved++;});},{context:sandbox});await vendor.link(()=>{});await vendor.evaluate();
  const mod=new vm.SourceTextModule(uiSource,{context:sandbox,importModuleDynamically:()=>vendor});
  await mod.link(name=>{
@@ -42,7 +42,7 @@ async function ui(initialVerified=false){
   }};
   return new vm.SyntheticModule(Object.keys(exports),function(){for(const [k,v] of Object.entries(exports))this.setExport(k,v);},{context:sandbox});
  });await mod.evaluate();
- return {el,requests,stored,get mount(){return mount;},get stopped(){return stopped;},get removed(){return cameraRemoved;},result:value=>{result=value;},startResult:value=>resolveStart(value)};
+ return {el,requests,stored,redirects,get mount(){return mount;},get stopped(){return stopped;},get removed(){return cameraRemoved;},result:value=>{result=value;},startResult:value=>resolveStart(value)};
 }
 const ready=await ui(true);assert.equal(ready.el('listo-panel').hidden,false);assert.equal(ready.requests.length,1);
 const screen=await ui();assert.equal(screen.el('listo-panel').hidden,true);
@@ -59,3 +59,7 @@ const failingStart=failedScreen.el('iniciar').onclick();await new Promise(resolv
 failedScreen.result({verified:false,status:'rechazado',reason:'confianza_insuficiente',feedback:['LOW_VIDEO_QUALITY_DETECTED','unknown']});await failedScreen.mount.onAnalysisComplete();
 assert.match(failedScreen.el('estado').textContent,/calidad de video insuficiente/);assert.ok(!failedScreen.el('estado').textContent.includes('unknown'));assert.equal(failedScreen.el('listo-panel').hidden,true);
 console.log('Presencia cliente: sesión, errores, credenciales temporales, consentimiento, doble toque, liberación de cámara y aprobación exclusiva del servidor: OK');
+
+const returning=await ui(true,true);assert.deepEqual(returning.redirects,['reservar.html']);
+const pendingPresence=await ui(false,true);assert.equal(pendingPresence.redirects.length,0);assert.equal(pendingPresence.el('selfie-panel').hidden,false);
+console.log('Portada: aprobación del servidor redirige a reservar; sesión telefónica sin presencia permanece en selfie.');
