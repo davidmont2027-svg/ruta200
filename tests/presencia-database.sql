@@ -30,6 +30,7 @@ begin
  r:=public.r200_presencia_consultar(u1,a1);if (r->>'puede_consultar')::boolean then raise exception 'No limita consultas seguidas';end if;
  r:=public.r200_presencia_finalizar(u1,a1,'IN_PROGRESS',100);if (r->>'verificado')::boolean then raise exception 'Aprobó prueba incompleta';end if;
  r:=public.r200_presencia_finalizar(u1,a1,'SUCCEEDED',25);if (r->>'verificado')::boolean or r->>'estado'<>'rechazado' then raise exception 'Aprobó confianza insuficiente';end if;
+ if r->>'motivo'<>'confianza_insuficiente' or (select resultado_aws from public.r200_presencia_intentos where id=a1)<>'SUCCEEDED' then raise exception 'No conserva motivo de AWS';end if;
  r:=public.r200_presencia_finalizar(u1,a1,'SUCCEEDED',100);if (r->>'verificado')::boolean then raise exception 'Reabrió prueba rechazada';end if;
  perform public.r200_presencia_iniciar(u1,a2,'r200-presencia-v1');perform public.r200_presencia_asociar(u1,a2,s2);
  update public.r200_presencia_intentos set creado_at=now()-interval '4 minutes' where id=a2;
@@ -46,6 +47,12 @@ begin
  ('72000000-0000-4000-8000-000000000082',u3,'520000000073','r200-presencia-v1','rechazado',now()-interval '5 minutes'),
  ('72000000-0000-4000-8000-000000000083',u3,'520000000073','r200-presencia-v1','rechazado',now()-interval '5 minutes');
  rejected:=false;begin perform public.r200_presencia_iniciar(u3,a4,'r200-presencia-v1');exception when others then if strpos(sqlerrm,'Límite de intentos')=0 then raise;end if;rejected:=true;end;if not rejected then raise exception 'No limita a tres intentos';end if;
+ rejected:=false;begin update public.r200_presencia_intentos set cuota_reintegrada_at=now() where id='72000000-0000-4000-8000-000000000081';exception when check_violation then rejected:=true;end;if not rejected then raise exception 'Acepta reintegro sin motivo';end if;
+ update public.r200_presencia_intentos set cuota_reintegrada_at=now(),motivo_reintegro='Revisión de prueba sintética' where id='72000000-0000-4000-8000-000000000081';
+ r:=public.r200_presencia_iniciar(u3,a4,'r200-presencia-v1');if (r->>'verificado')::boolean or r->>'intento_id'<>a4::text then raise exception 'Reintegro aprueba o no permite inicio';end if;
+ if (select estado from public.r200_presencia_intentos where id='72000000-0000-4000-8000-000000000081')<>'rechazado' then raise exception 'Reintegro cambia resultado anterior';end if;
+ perform public.r200_presencia_asociar(u3,a4,'82000000-0000-4000-8000-000000000074');
+ r:=public.r200_presencia_finalizar(u3,a4,'FAILED',null);if (r->>'verificado')::boolean or r->>'motivo'<>'aws_failed' then raise exception 'Resultado FAILED incorrecto';end if;
  if fn_before<>pg_get_functiondef('public.r200_reservar(bigint,text,text,integer,text)'::regprocedure) then raise exception 'Modificó reservas';end if;
 end;
 $test$;
