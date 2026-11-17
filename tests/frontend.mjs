@@ -80,3 +80,18 @@ driver.get('rol-fecha-1').value='2031-01-20';driver.get('rol-hora-1').value='08:
 driver.get('crear').onsubmit({preventDefault(){}});await flush();await flush();
 assert.equal(driver.calls.find(c=>c.name==='r200_crear_rol').body.p_conductor,1);
 console.log('Conductor: publica su carro y ve hora de 12 horas, fecha día/mes/año y asientos separados.');
+
+const summaryApp=await app('reservar.js','reservar.html',()=>ok(trips));
+summaryApp.get('ruta').value='vuelta';summaryApp.get('fecha').value='2031-01-20';summaryApp.get('asientos').value='2';await summaryApp.get('actualizar').onclick();await flush();
+summaryApp.get('nombre').value='Pasajero de prueba';summaryApp.get('nombre').oninput();
+assert.equal(summaryApp.get('resumen-ruta').textContent,'Mezcales → Tepic');
+assert.equal(summaryApp.get('resumen-fecha').textContent,'20/01/2031');
+assert.equal(summaryApp.get('resumen-asientos').textContent,'2 asientos');
+assert.equal(summaryApp.get('resumen-nombre').textContent,'Pasajero de prueba');
+assert.match(summaryApp.get('resumen-hora').textContent,/8 a\. m\. · Mezcales/);
+assert.equal(summaryApp.get('total').textContent,'$500 MXN');
+assert.equal(summaryApp.get('reintentar-acceso').hidden,true);
+const accessError=await app('reservar.js','reservar.html',()=>ok([]),{presenceData:{verified:'unexpected'}});
+assert.equal(accessError.get('reintentar-acceso').hidden,false);
+assert.equal(accessError.calls.some(c=>c.name==='r200_horarios'),false);
+console.log('Resumen: recorrido, fecha, hora local, pasajero, asientos, total y reintento de acceso verificados.');
