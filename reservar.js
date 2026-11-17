@@ -8,7 +8,7 @@ let trips=[],loading=false,busy=false,version=0,accessReady=false;
 const origin=()=>route.value==='ida'?'Tepic':'Mezcales';
 async function checkAccess(){
  if(busy)return;busy=true;accessReady=false;button.disabled=true;$('contenido').classList.add('hidden');
- $('reintentar-acceso').disabled=true;message($('estado-acceso'),'Comprobando tu acceso…');
+ $('reintentar-acceso').hidden=true;$('reintentar-acceso').disabled=true;message($('estado-acceso'),'Comprobando tu acceso…');
  try{
   const session=await passengerSession();
   if(!session){location.replace('index.html');return;}
@@ -18,7 +18,7 @@ async function checkAccess(){
   if(!/^\d{10}$/.test(phone)){location.replace('index.html');return;}
   $('telefono').value=phone;accessReady=true;$('contenido').classList.remove('hidden');
   $('estado-acceso').hidden=true;$('reintentar-acceso').hidden=true;
- }catch(e){message($('estado-acceso'),e.message,true);}
+ }catch(e){$('estado-acceso').hidden=false;$('reintentar-acceso').hidden=false;message($('estado-acceso'),e.message,true);}
  finally{busy=false;$('reintentar-acceso').disabled=false;}
  if(accessReady)await load();
 }
@@ -37,7 +37,20 @@ function options(){
  $('total').textContent='$'+Number(seats.value)*250+' MXN';
  renderTripCards();
 }
+function updateSummary(){
+ const [y,m,d]=date.value.split('-');
+ $('resumen-ruta').textContent=origin()+' → '+(origin()==='Tepic'?'Mezcales':'Tepic');
+ $('resumen-fecha').textContent=y&&m&&d?d+'/'+m+'/'+y:'Por elegir';
+ const hour=departure.value;
+ if(loading)$('resumen-hora').textContent='Consultando…';
+ else if(!hour)$('resumen-hora').textContent='Sin salida disponible';
+ else{const [h,min]=hour.split(':');const n=Number(h);$('resumen-hora').textContent=(n%12||12)+(min==='00'?'':':'+min)+' '+(n<12?'a. m.':'p. m.')+' · '+origin();}
+ $('resumen-nombre').textContent=$('nombre').value.trim()||'Escribe tu nombre';
+ $('resumen-asientos').textContent=seats.value+(Number(seats.value)===1?' asiento':' asientos');
+}
+$('nombre').oninput=updateSummary;
 function renderTripCards(){
+ updateSummary();
  const list=$('carros-horario');list.replaceChildren();
  const selected=trips.filter(t=>!departure.value||t.hora===departure.value);
  for(const trip of selected){const card=document.createElement('article');card.className='carro-horario';
@@ -54,9 +67,9 @@ async function load(){
  if(busy||!accessReady)return;const current=++version;loading=true;button.disabled=true;
  date.min=today(origin());if(!date.value||date.value<date.min)date.value=date.min;
  $('carros-horario').replaceChildren();
- message(status,'Consultando asientos disponibles…');
+ message(status,'Consultando asientos disponibles…');updateSummary();
  try{const data=await rpc('r200_horarios',{p_fecha:date.value,p_origen:origin()});if(current!==version)return;trips=data;loading=false;options();}
- catch(e){if(current!==version)return;trips=[];departure.replaceChildren();$('carros-horario').replaceChildren();loading=false;message(status,e.message,true);}
+ catch(e){if(current!==version)return;trips=[];departure.replaceChildren();$('carros-horario').replaceChildren();loading=false;updateSummary();message(status,e.message,true);}
 }
 date.value=today();date.min=date.value;date.onchange=load;route.onchange=load;seats.onchange=options;
 $('actualizar').onclick=load;
@@ -84,7 +97,7 @@ button.onclick=async()=>{
   const ticket=await rpc('r200_reservar',body,session.access_token);saveTicket(intent.key,ticket);saveLocal('r200-pendiente',null);
   location.href=ticketLink(intent.key);
  }catch(e){message(status,e.message+' Tu solicitud pendiente puede revisarse desde Mis boletos.',true);}
- finally{busy=false;for(const el of [name,phone,route,date,departure,seats])el.disabled=false;button.textContent='RESERVAR GRATIS';button.disabled=!departure.value;renderTickets();}
+ finally{busy=false;for(const el of [name,phone,route,date,departure,seats])el.disabled=false;button.textContent='Confirmar mi reservación →';button.disabled=!departure.value;renderTickets();}
 };
 function renderTickets(){
  const list=$('mis-boletos');list.replaceChildren();const saved=readLocal('r200-tickets',[]);const pending=readLocal('r200-pendiente',null);
