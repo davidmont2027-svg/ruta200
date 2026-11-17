@@ -95,3 +95,18 @@ const accessError=await app('reservar.js','reservar.html',()=>ok([]),{presenceDa
 assert.equal(accessError.get('reintentar-acceso').hidden,false);
 assert.equal(accessError.calls.some(c=>c.name==='r200_horarios'),false);
 console.log('Resumen: recorrido, fecha, hora local, pasajero, asientos, total y reintento de acceso verificados.');
+
+let maintenanceOn=true;
+const maintenance=await app('admin.js','admin.html',name=>name==='r200_panel'&&maintenanceOn?({ok:false,json:async()=>({message:'Aplicación en mantenimiento. Intenta más tarde.'})}):ok(panel),{sessionData:operator});
+assert.equal(maintenance.get('mantenimiento-panel').hidden,false);
+assert.equal(maintenance.get('panel').hidden,true);
+assert.equal(maintenance.get('login-panel').hidden,true);
+assert.equal(maintenance.get('horarios').children.length,0);
+maintenanceOn=false;await maintenance.get('reintentar-mantenimiento').onclick();
+assert.equal(maintenance.get('mantenimiento-panel').hidden,true);assert.equal(maintenance.get('panel').hidden,false);
+maintenanceOn=true;await maintenance.get('refresh').onclick();
+assert.equal(maintenance.get('panel').hidden,true);assert.equal(maintenance.get('mantenimiento-panel').hidden,false);
+assert.equal(maintenance.get('conductor').children.length,0);
+await maintenance.get('salir-mantenimiento').onclick();
+assert.equal(maintenance.get('mantenimiento-panel').hidden,true);assert.equal(maintenance.get('login-panel').hidden,false);
+console.log('Mantenimiento individual: panel y datos ocultos; reintento, reactivación y cierre de sesión verificados.');

@@ -17,10 +17,16 @@ async function access(){
 const call=async(name,body)=>rpc(name,body,await access());
 function p(text){const e=document.createElement('p');e.textContent=text;return e;}
 function action(label,fn){const e=document.createElement('button');e.className='small';e.textContent=label;e.onclick=()=>mutate(fn);return e;}
-async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
+function showMaintenance(error){
+ if(!error?.message?.startsWith('Aplicación en mantenimiento'))return false;
+ data=null;$('panel').hidden=true;$('login-panel').hidden=true;$('mantenimiento-panel').hidden=false;
+ for(const id of ['horarios','reservaciones','pasajeros','flota','conductor'])$(id).replaceChildren();
+ $('foto-vehiculo').hidden=true;$('foto-vehiculo').src='';message($('status'),'');return true;
+}
+async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
- try{data=await call('r200_panel');$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;render();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
- catch(e){if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
+ try{data=await call('r200_panel');$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;render();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ catch(e){if(showMaintenance(e))return;if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
 }
 function fechaVisible(fecha){const [y,m,d]=fecha.split('-');return d+'/'+m+'/'+y;}
 function horaVisible(hora){const [h,m]=hora.split(':');const n=Number(h);return (n%12||12)+(m==='00'?'':':'+m)+' '+(n<12?'a. m.':'p. m.');}
@@ -61,7 +67,8 @@ function renderPassengers(){
  }if(!list.children.length)list.textContent='No hay pasajeros que mostrar.';
 }
 $('login').onsubmit=async e=>{e.preventDefault();if($('entrar').disabled)return;$('entrar').disabled=true;try{const captchaToken=await security().token();const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value,gotrue_meta_security:{captcha_token:captchaToken}})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;security().reset().catch(()=>{});}};
-$('logout').onclick=async()=>{const old=session;saveSession(null);data=null;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
+$('logout').onclick=async()=>{const old=session;saveSession(null);data=null;$('mantenimiento-panel').hidden=true;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
+$('reintentar-mantenimiento').onclick=load;$('salir-mantenimiento').onclick=()=>$('logout').onclick();
 $('refresh').onclick=load;$('buscar').oninput=renderReservations;$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
