@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "RUTA 200 · Juntos en el camino",
+  "short_name": "RUTA 200",
+  "description": "Reserva tus viajes entre Tepic y Mezcales. Juntos en el camino.",
+  "lang": "es-MX",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#11140f",
+  "theme_color": "#11140f",
+  "icons": [
+    {"src": "icons/ruta200-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/ruta200-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/ruta200-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Reservar mi viaje", "short_name": "Reservar", "url": "acceso.html"},
+    {"name": "Panel de conductores", "short_name": "Conductores", "url": "admin.html"}
+  ]
+}
