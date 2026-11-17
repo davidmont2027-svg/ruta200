@@ -2,40 +2,44 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
-<title>Verifica tu acceso | RUTA 200</title>
-<link rel="stylesheet" href="presencia-assets/detector.css"><link rel="stylesheet" href="presencia.css">
+<meta name="referrer" content="no-referrer">
+<title>RUTA 200 · Juntos en el camino | Tepic ⇄ Mezcales</title>
+<meta name="description" content="Viaja entre Tepic y Mezcales con RUTA 200. Consulta salidas y reserva tu asiento por $250 MXN. Pago al abordar.">
+<meta name="theme-color" content="#12120f">
+<link rel="stylesheet" href="portada.css?v=20261116-1">
 </head>
-<body data-entry="production">
-<header><p class="brand">RUTA <span>200</span></p><p>Juntos en el camino</p></header>
-<main>
-<p class="notice">Verifica tu acceso para evitar reservaciones falsas y cuidar los lugares de quienes sí necesitan viajar.</p>
-<ol class="steps" aria-label="Pasos de acceso"><li id="paso-telefono">1. Teléfono</li><li id="paso-selfie">2. Selfie</li><li>3. Reservar</li></ol>
-<section id="telefono-panel" class="panel" hidden>
-<h1>Verifica tu número</h1><p>Recibe un código por SMS para confirmar tu teléfono.</p>
-<label for="telefono">Celular de México (+52)</label>
-<input id="telefono" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel-national" placeholder="10 dígitos">
-<div id="captcha-presencia"></div>
-<button id="enviar" type="button">Enviar código SMS</button>
-<div id="codigo-panel" hidden><label for="codigo">Código recibido</label><input id="codigo" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 dígitos"><button id="confirmar" type="button">Confirmar teléfono</button></div>
+<body>
+<a class="skip" href="#contenido">Ir al contenido</a>
+<header class="topbar"><nav class="nav wrap" aria-label="Navegación principal">
+<a class="logo" href="./" aria-label="RUTA 200, inicio"><span class="road" aria-hidden="true">╱╱</span><span><strong>RUTA 200</strong><small>Juntos en el camino</small></span></a>
+<div class="navlinks"><a href="#como-reservar">Cómo reservar</a><a href="admin.html">Conductores</a><a class="cta compact" href="acceso.html">Reservar</a></div>
+</nav></header>
+<main id="contenido">
+<section class="hero" aria-labelledby="titulo">
+<div class="hero-shade"><div class="wrap hero-grid">
+<div class="hero-copy"><p class="eyebrow">Tepic · Bahía de Banderas</p>
+<h1 id="titulo">Tu viaje<br> empieza aquí.</h1>
+<p class="route">Tepic <span aria-hidden="true">⇄</span> Mezcales</p>
+<p class="intro">Reserva tu lugar y viaja con RUTA 200.</p>
+<p class="price">$250 <span>MXN</span><small>por asiento · Pago al abordar</small></p>
+<a class="cta hero-cta" href="acceso.html">Consultar salidas y reservar <span aria-hidden="true">→</span></a>
+<a class="whatsapp" href="https://wa.me/523348455057" target="_blank" rel="noopener">Atención por WhatsApp <span aria-hidden="true">→</span></a>
+</div>
+<div class="fleet-area"><p class="fleet-heading">Conoce nuestros carros</p><div class="fleet">
+<figure><img src="vehiculos/mg5-blanco.svg" alt="MG5 blanco de Blanca" width="180" height="240"><figcaption><strong>Blanca</strong><span>MG5</span></figcaption></figure>
+<figure><img src="vehiculos/versa-vdrive-tony.svg" alt="Versa V-Drive blanco de Tony" width="180" height="240"><figcaption><strong>Tony</strong><span>Versa V-Drive</span></figcaption></figure>
+<figure><img src="vehiculos/vento-manuel.svg" alt="Vento blanco de Manuel" width="180" height="240"><figcaption><strong>Manuel</strong><span>Vento</span></figcaption></figure>
+<figure><img src="vehiculos/aveo-david.svg" alt="Aveo azul de David" width="180" height="240"><figcaption><strong>David</strong><span>Aveo</span></figcaption></figure>
+<figure><img src="vehiculos/versa-francisco.svg" alt="Versa azul de Francisco" width="180" height="240"><figcaption><strong>Francisco</strong><span>Versa</span></figcaption></figure>
+</div><p class="fleet-note">Elige tu horario. Te asignamos un carro con lugares para tu grupo.</p></div>
+</div></div>
 </section>
-<section id="selfie-panel" class="panel" hidden>
-<h1>Confirma tu presencia</h1>
-<p>Esta prueba nos ayuda a evitar reservaciones falsas y a confirmar que hay una persona real detrás de cada solicitud. Así cuidamos los lugares disponibles para quienes sí necesitan viajar.</p>
-<p>Es una prueba breve con la cámara frontal. Antes de comenzar, sube el brillo de la pantalla al máximo y busca luz uniforme, sin sol directo sobre tu rostro o teléfono. Hazla tú solo frente a la cámara y sigue las indicaciones.</p>
-<p class="notice">La prueba puede mostrar luces de colores. Si eres sensible a luces intermitentes, no la inicies y contacta a atención al cliente.</p>
-<p class="muted">El video se envía a Amazon Web Services para comprobar tu presencia. RUTA 200 guarda el resultado de aprobación, sin crear una galería de selfies. Hay un máximo de 3 intentos cada 24 horas.</p>
-<label class="consent"><input id="consentimiento" type="checkbox">Acepto la prueba de presencia y el procesamiento del video para verificar mi acceso.</label>
-<button id="iniciar" type="button">Iniciar prueba de selfie</button>
-<button id="consultar" type="button" class="secondary" hidden>Consultar resultado</button>
-</section>
-<section id="camara-panel" class="panel" hidden aria-label="Prueba de selfie"><div id="detector"></div></section>
-<section id="listo-panel" class="panel" hidden><h1>Acceso verificado</h1><p>Tu teléfono y la prueba de presencia están confirmados.</p><a class="button" href="reservar.html">Continuar a reservar</a></section>
-<p id="estado" role="status" aria-live="polite">Comprobando tu sesión…</p>
-<button id="cerrar" class="secondary" type="button" hidden>Cerrar mi sesión</button>
-<p class="muted">No compartas el código recibido. Si usas un celular prestado, cierra tu sesión al terminar.</p>
-<p><a href="https://wa.me/523348455057" target="_blank" rel="noopener">Atención por WhatsApp</a> · <a href="admin.html">Acceso de conductores</a></p>
+<section class="how" id="como-reservar" aria-labelledby="como-titulo"><div class="wrap">
+<p class="eyebrow">Fácil, desde tu celular o computadora</p><h2 id="como-titulo">Así reservas</h2>
+<ol class="how-grid"><li><span class="step-number" aria-hidden="true">01</span><div><h3>Confirma tu teléfono</h3><p>Recibe tu código por SMS para comenzar.</p></div></li><li><span class="step-number" aria-hidden="true">02</span><div><h3>Completa tu selfie</h3><p>Una prueba breve para confirmar tu presencia.</p></div></li><li><span class="step-number" aria-hidden="true">03</span><div><h3>Reserva y recibe tu boleto</h3><p>Elige recorrido, fecha, horario y asientos.</p></div></li></ol>
+<p class="verification-note">La verificación nos ayuda a evitar reservaciones falsas y a cuidar los lugares disponibles.</p>
+<a class="cta bottom-cta" href="acceso.html">Empezar mi reserva →</a>
+</div></section>
 </main>
-<script type="module" src="presencia.js?v=20261116-acceso1"></script>
+<footer><div class="wrap footer-inner"><a class="logo" href="./"><span><strong>RUTA 200</strong><small>Juntos en el camino</small></span></a><p>Tepic ⇄ Mezcales</p><a href="admin.html">Acceso de conductores</a></div></footer>
 </body></html>
-
