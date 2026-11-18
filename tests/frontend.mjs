@@ -145,3 +145,15 @@ const rejectedBooking=await app('reservar.js','reservar.html',name=>name==='r200
 rejectedBooking.get('nombre').value='Pasajero de prueba';rejectedBooking.get('asientos').value='1';await rejectedBooking.get('continuar').onclick();
 assert.match(rejectedBooking.get('estado-confirmacion').textContent,/ya tiene una reserva/);assert.equal(rejectedBooking.get('abrir-boleto').hidden,true);
 console.log('Boleto: enlace de respaldo ante navegación bloqueada, historial local inválido y error visible junto al botón verificados.');
+
+const emptyName=await app('reservar.js','reservar.html',()=>ok(trips));
+emptyName.get('asientos').value='1';await emptyName.get('continuar').onclick();
+assert.match(emptyName.get('estado-confirmacion').textContent,/nombre completo/);
+assert.equal(emptyName.calls.some(c=>c.name==='r200_reservar'),false);
+const franciscoTrip=[{...trips[0],id:55,hora:'19:48',conductor:'Francisco',disponibles:4}];
+const franciscoBooking=await app('reservar.js','reservar.html',name=>ok(name==='r200_horarios'?franciscoTrip:ticket));
+franciscoBooking.get('ruta').value='vuelta';franciscoBooking.get('asientos').value='2';await franciscoBooking.get('actualizar').onclick();
+franciscoBooking.get('nombre').value='Pasajero de prueba';await franciscoBooking.get('continuar').onclick();
+assert.equal(franciscoBooking.calls.find(c=>c.name==='r200_reservar').body.p_horario,55);
+assert.match(franciscoBooking.location.href,/boleto.html#[a-f0-9]{64}$/);
+console.log('Confirmación: nombre faltante explica el bloqueo junto al botón; salida de Francisco 19:48 genera boleto.');
