@@ -41,13 +41,46 @@ function render(){
   const info=document.createElement('div');info.className='salida-info';
   const c=data.conductores.find(c=>c.id===h.conductor_id),v=data.vehiculos.find(v=>v.id===h.vehiculo_id);
   const title=document.createElement('strong');title.textContent=(h.conductor_nombre||c?.nombre||'Conductor por confirmar')+' · '+(v?.modelo||h.vehiculo_nombre||'Vehículo '+h.vehiculo_id);
-  info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino),p(h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados'));
+  info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino));
   const estado=p(!h.activo?'Cerrada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':'Disponible para reservar');estado.className='pill';info.append(estado);a.append(info);
   const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';a.append(img);}
+  a.append(tripPassengerList(h));
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
   hs.append(a);
  }if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
  actualizarFoto();renderReservations();renderPassengers();
+}
+function tripPassengerList(h){
+ const details=document.createElement('details');details.className='pasajeros-salida';
+ const summary=document.createElement('summary');summary.textContent=h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados · Ver pasajeros';
+ const list=document.createElement('div');list.className='lista-viajeros';
+ details.append(summary,list);let loading=false;
+ details.ontoggle=async()=>{
+  if(!details.open||loading)return;loading=true;list.replaceChildren(p('Consultando pasajeros…'));
+  try{
+   const passengers=await call('r200_pasajeros_salida',{p_horario:h.id});
+   if(!Array.isArray(passengers))throw new Error('No se pudo consultar esta salida.');
+   list.replaceChildren();
+   if(!passengers.length)list.append(p('Esta salida todavía no tiene reservaciones activas.'));
+   for(const person of passengers){
+    const row=document.createElement('div');row.className='viajero';
+    const name=document.createElement('strong');name.textContent=person.nombre;
+    row.append(name,p(person.asientos+(Number(person.asientos)===1?' asiento':' asientos')+' · '+(person.estado==='ausente'?'Ausencia registrada':'Reservación confirmada')));
+    const phone=String(person.telefono||'').replace(/\D/g,'');
+    row.append(p('Teléfono: '+(phone||'No disponible')));
+    const international=phone.length===10?'52'+phone:phone;
+    if(/^52[0-9]{10}$/.test(international)){
+     const links=document.createElement('div');links.className='contacto-viajero';
+     const callLink=document.createElement('a');callLink.href='tel:+'+international;callLink.textContent='Llamar';
+     const whatsapp=document.createElement('a');whatsapp.href='https://wa.me/'+international;whatsapp.textContent='WhatsApp';whatsapp.target='_blank';whatsapp.rel='noopener noreferrer';
+     links.append(callLink,whatsapp);row.append(links);
+    }
+    list.append(row);
+   }
+  }catch(e){if(!showMaintenance(e))list.replaceChildren(p(e.message+' Cierra y vuelve a abrir para reintentar.'));}
+  finally{loading=false;}
+ };
+ return details;
 }
 function renderFleet(){
  $('flota-panel').hidden=!data.administrador;const list=$('flota');list.replaceChildren();
