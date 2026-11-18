@@ -1,6 +1,6 @@
 import {passengerSession,samePhone,logoutPassenger} from './pasajero-auth.js';
 import {presenceRequest} from './presencia-api.js';
-import {rpc,today,token,readLocal,saveLocal,saveTicket,ticketLink,message} from './r200.js';
+import {rpc,today,token,readLocal,saveLocal,saveTicket,ticketLink,message} from './r200.js?v=20261118-boleto2';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);
 const route=$('ruta'),date=$('fecha'),departure=$('salida'),seats=$('asientos'),button=$('continuar'),status=$('estado-reserva');
@@ -73,35 +73,41 @@ async function load(){
 }
 date.value=today();date.min=date.value;date.onchange=load;route.onchange=load;seats.onchange=options;
 $('actualizar').onclick=load;
+function bookingMessage(text,error=false){message(status,text,error);message($('estado-confirmacion'),text,error);}
 button.onclick=async()=>{
  if(busy||loading||!accessReady)return;
- const name=$('nombre'),phone=$('telefono');
+ const name=$('nombre'),phone=$('telefono');$('abrir-boleto').hidden=true;
  name.setCustomValidity(name.value.trim().length>=2?'':'Escribe el nombre completo.');
  phone.setCustomValidity(/^\d{10}$/.test(phone.value.trim())?'':'Escribe un teléfono de 10 dígitos.');
  if(!name.reportValidity()||!phone.reportValidity()||!departure.value)return;
  const amount=Number(seats.value);const candidates=trips.filter(t=>t.hora===departure.value&&t.disponibles>=amount);
  if(!Number.isInteger(amount)||amount<1||amount>4||!candidates.length){await load();return;}
  let session;busy=true;
- try{session=await passengerSession();}catch(e){busy=false;message(status,e.message,true);return;}
+ try{session=await passengerSession();}catch(e){busy=false;bookingMessage(e.message,true);return;}
  if(!session||!samePhone(session,phone.value)){busy=false;location.replace('index.html');return;}
  const signature=JSON.stringify([name.value.trim(),phone.value.trim(),date.value,origin(),departure.value,amount]);
  const pending=readLocal('r200-pendiente',null);
  // Tras una respuesta perdida, conservar también el horario original aunque cambien los cupos.
  const intent=pending?.signature===signature?pending:{signature,key:token(),horario:candidates[0].id};
  const body={p_horario:intent.horario,p_nombre:name.value.trim(),p_telefono:phone.value.trim(),p_asientos:amount,p_clave:intent.key};
- if(!saveLocal('r200-pendiente',intent)){busy=false;message(status,'Permite el almacenamiento de este sitio para conservar y recuperar tu boleto antes de reservar.',true);return;}
+ if(!saveLocal('r200-pendiente',intent)){busy=false;bookingMessage('Permite el almacenamiento de este sitio para conservar y recuperar tu boleto antes de reservar.',true);return;}
  busy=true;button.disabled=true;button.textContent='CONFIRMANDO…';
  for(const el of [name,phone,route,date,departure,seats])el.disabled=true;
- message(status,'Confirmando tu reserva. Espera la respuesta…');
+ bookingMessage('Confirmando tu reserva. Espera la respuesta…');
  try{
-  const ticket=await rpc('r200_reservar',body,session.access_token);saveTicket(intent.key,ticket);saveLocal('r200-pendiente',null);
-  location.href=ticketLink(intent.key);
- }catch(e){message(status,e.message+' Tu solicitud pendiente puede revisarse desde Mis boletos.',true);}
+  const ticket=await rpc('r200_reservar',body,session.access_token);
+  if(!ticket||typeof ticket.folio!=='string'||typeof ticket.fecha!=='string')throw new Error('No se pudo leer la confirmación. Conservamos tu solicitud para revisarla.');
+  const link=ticketLink(intent.key),fallback=$('abrir-boleto');fallback.href=link;fallback.hidden=false;
+  let saved=false;try{saved=saveTicket(intent.key,ticket);}catch{}
+  if(saved)saveLocal('r200-pendiente',null);
+  bookingMessage('Reserva confirmada. Abriendo tu boleto… Si no abre, pulsa «Abrir mi boleto».');
+  try{location.href=link;}catch{bookingMessage('Reserva confirmada. Pulsa «Abrir mi boleto» para verlo.');}
+ }catch(e){bookingMessage(e.message+' Tu solicitud pendiente puede revisarse desde Mis boletos.',true);}
  finally{busy=false;for(const el of [name,phone,route,date,departure,seats])el.disabled=false;button.textContent='Confirmar mi reservación →';button.disabled=!departure.value;renderTickets();}
 };
 function renderTickets(){
- const list=$('mis-boletos');list.replaceChildren();const saved=readLocal('r200-tickets',[]);const pending=readLocal('r200-pendiente',null);
- if(pending){const a=document.createElement('a');a.href=ticketLink(pending.key);a.textContent='Revisar mi solicitud pendiente';const p=document.createElement('p');p.append(a);list.append(p);}
+ const list=$('mis-boletos');list.replaceChildren();const stored=readLocal('r200-tickets',[]);const saved=(Array.isArray(stored)?stored:[]).filter(t=>t&&/^[a-f0-9]{64}$/.test(t.key)&&typeof t.folio==='string'&&typeof t.fecha==='string');const pending=readLocal('r200-pendiente',null);
+ if(pending&&/^[a-f0-9]{64}$/.test(pending.key)){const a=document.createElement('a');a.href=ticketLink(pending.key);a.textContent='Revisar mi solicitud pendiente';const p=document.createElement('p');p.append(a);list.append(p);}
  for(const t of saved){const a=document.createElement('a');a.href=ticketLink(t.key);a.textContent=t.fecha+' · Folio '+t.folio.slice(0,8).toUpperCase();const p=document.createElement('p');p.append(a);list.append(p);}
  if(!pending&&!saved.length)list.textContent='Aquí aparecerán los boletos guardados en este dispositivo.';
 }

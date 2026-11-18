@@ -20,7 +20,8 @@ export function readLocal(key,fallback){try{return JSON.parse(localStorage.getIt
 export function saveLocal(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}}
 export function ticketLink(key){return new URL('boleto.html#'+key,location.href).href;}
 export function saveTicket(key,ticket){
- const tickets=readLocal('r200-tickets',[]).filter(t=>t.key!==key);
- saveLocal('r200-tickets',[{key,folio:ticket.folio,fecha:ticket.fecha},...tickets].slice(0,30));
+ const stored=readLocal('r200-tickets',[]);
+ const tickets=(Array.isArray(stored)?stored:[]).filter(t=>t&&t.key!==key);
+ return saveLocal('r200-tickets',[{key,folio:ticket.folio,fecha:ticket.fecha},...tickets].slice(0,30));
 }
 export function message(el,text,error=false){el.textContent=text;el.style.color=error?'#ffb6b6':'#f3d58c';}
