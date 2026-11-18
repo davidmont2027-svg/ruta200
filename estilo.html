@@ -30,10 +30,10 @@ function render(){
  if(step===3)html+='<h1>'+(mode==='driver'?'¿Dónde se encuentran?':'Revisa tu viaje.')+'</h1>'+(mode==='driver'?'<p class="muted">Escribe un punto fácil de reconocer para tus pasajeros.</p><label for="meeting">Punto de encuentro</label><input id="meeting" maxlength="120" placeholder="Ej. Entrada de la central" value="'+safe(meeting)+'"><p class="muted">Tarifa Ruta 200: $250 MXN por asiento.</p>':summary()+'<p class="muted">El carro se asigna al confirmar, según el espacio para tu grupo. Puedes cancelar hasta 30 minutos antes.</p>')+btn(mode==='driver'?'Revisar salida →':'Continuar →');
  if(step===4)html+='<h1>'+(mode==='driver'?'¿Todo listo para salir?':'Tu lugar está a un paso.')+'</h1>'+summary()+'<p class="muted">Esta prueba muestra cómo se vería la confirmación. No se enviarán datos a los conductores.</p>'+btn(mode==='driver'?'Simular publicación →':'Simular reserva →');
  if(step===5)html+='<div class="success" aria-hidden="true">✓</div><p class="eyebrow">Demostración completada</p><h1>'+(mode==='driver'?'¡Así se verá tu salida publicada!':'¡Así se verá tu confirmación!')+'</h1><p class="muted">Este es un ejemplo visual. No hay un viaje publicado ni un asiento reservado.</p>'+summary()+'<button class="primary" id="restart">Probar otra vez →</button><a class="primary" href="acceso.html">Hacer una reserva real ↗</a>';
- if(step===2||step===3||step===4||step===5){const end=html.indexOf('</h1>');if(end!==-1)html=html.slice(0,end+5)+routeMap()+html.slice(end+5);}
+ if(step>=0&&step<=5){const end=html.indexOf('</h1>');if(end!==-1)html=html.slice(0,end+5)+routeMap()+html.slice(end+5);}
  screen.innerHTML=html;
  const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.onclick=fn;};
- if(step===0)document.getElementById('route').value=route;
+ if(step===0){const routeField=document.getElementById('route'),dateField=document.getElementById('date');routeField.value=route;routeField.onchange=()=>{date=dateField.value||date;route=routeField.value;render();};dateField.onchange=()=>{date=dateField.value;};}
  bind('back',()=>{step--;render();});bind('minus',()=>{count=Math.max(1,count-1);render();});bind('plus',()=>{count=Math.min(4,count+1);render();});bind('restart',()=>start(mode));
  screen.querySelectorAll('[data-hour]').forEach(el=>el.onclick=()=>{hour=el.dataset.hour;render();});
  bind('next',()=>{
