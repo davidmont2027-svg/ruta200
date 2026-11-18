@@ -1,10 +1,25 @@
 import {API,KEY} from './r200.js';
 export function setupDriverNotifications({getToken,onReservation}){
- const $=id=>document.getElementById(id),activate=$('activar-avisos'),test=$('probar-avisos'),disable=$('desactivar-avisos'),status=$('estado-avisos');
- let started=false,registration=null,active=false,working=false;
+ const $=id=>document.getElementById(id),sound=$('activar-sonido'),activate=$('activar-avisos'),test=$('probar-avisos'),disable=$('desactivar-avisos'),status=$('estado-avisos');
+ let started=false,registration=null,active=false,working=false,audio=null,soundOn=false,seen=null;
  const supported=typeof navigator!=='undefined'&&'serviceWorker' in navigator&&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window;
  const say=text=>{status.textContent=text;};
  const controls=()=>{activate.disabled=working||!supported;test.disabled=working||!active;disable.disabled=working||!active;};
+
+ function ding(){
+  if(!soundOn||!audio||audio.state!=='running')return;
+  try{for(const [offset,frequency] of [[0,880],[.2,1174]]){
+   const oscillator=audio.createOscillator(),gain=audio.createGain(),at=audio.currentTime+offset;
+   oscillator.type='sine';oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.001,at);gain.gain.exponentialRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);
+   oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(at);oscillator.stop(at+.2);
+  }}catch{soundOn=false;say('Vuelve a pulsar Activar y probar sonido.');}
+ }
+ sound.onclick=async()=>{
+  try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)throw Error('Este navegador no admite la prueba de sonido.');
+   audio=audio||new Constructor();await audio.resume();soundOn=audio.state==='running';if(!soundOn)throw Error('No se pudo activar el sonido. Revisa el volumen y vuelve a intentarlo.');
+   ding();say('Sonido activado mientras el panel esté abierto y visible. Revisa el volumen del teléfono.');
+  }catch(e){say(e.message);}
+ };
  async function request(body){
   const token=await getToken();const r=await fetch(API+'/functions/v1/ruta200-push',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
   const data=await r.json().catch(()=>null);if(!r.ok)throw Error(data?.error||'No se pudo configurar el aviso.');return data;
@@ -42,11 +57,18 @@ export function setupDriverNotifications({getToken,onReservation}){
  if(supported)navigator.serviceWorker.addEventListener('message',event=>{if(started&&event.data?.type==='r200-nueva-reserva')onReservation();});
  controls();
  return {
+  updateReservations(reservations){
+   const rows=Array.isArray(reservations)?reservations:[];
+   if(seen===null){seen=new Set(rows.map(r=>String(r.id)));return;}
+   const fresh=rows.filter(r=>r.estado==='confirmada'&&!seen.has(String(r.id)));
+   for(const r of rows)seen.add(String(r.id));
+   if(fresh.length){say('Nueva reservación recibida. Revisa los pasajeros de tu salida.');if(!document.hidden)ding();}
+  },
   async start(){
    if(started)return;started=true;
    if(!supported){say('Este navegador no admite estos avisos. En iPhone, instala RUTA 200 y abre la app desde su ícono. En Android, usa Chrome.');return;}
    await run(async()=>{await getRegistration();const sub=await subscription();const state=await request({action:'config',endpoint:sub?.endpoint});active=!!sub&&state.active&&window.Notification.permission==='granted';say(active?'Avisos activos en este celular. Puedes enviar una prueba.':'Activa los avisos para recibir nuevas reservas de tus viajes.');});
   },
-  async stop({unsubscribe:remove=false}={}){started=false;if(remove&&registration){try{await unsubscribe();}catch{say('Se cerraron los avisos en este dispositivo.');}}active=false;controls();}
+  async stop({unsubscribe:remove=false}={}){started=false;seen=null;soundOn=false;if(audio){void audio.close().catch(()=>{});audio=null;}if(remove&&registration){try{await unsubscribe();}catch{say('Se cerraron los avisos en este dispositivo.');}}active=false;controls();}
  };
 }

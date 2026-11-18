@@ -1,8 +1,8 @@
-import {setupDriverNotifications} from './avisos.js';
+import {setupDriverNotifications} from './avisos.js?v=20261118-sonido2';
 import {createCaptcha} from './captcha.js';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
-const $=id=>document.getElementById(id);let session=null,data=null,busy=false;
+const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false;
 try{session=JSON.parse(sessionStorage.getItem('r200-operador'));}catch{}
 let loginCaptcha;
 function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
@@ -26,15 +26,17 @@ function showMaintenance(error){
 }
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
- try{data=await call('r200_panel');$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;render();void avisos.start();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ if(loading)return;loading=true;
+ try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data);data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
  catch(e){if(showMaintenance(e))return;if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
+ finally{loading=false;}
 }
 function fechaVisible(fecha){const [y,m,d]=fecha.split('-');return d+'/'+m+'/'+y;}
 function horaVisible(hora){const [h,m]=hora.split(':');const n=Number(h);return (n%12||12)+(m==='00'?'':':'+m)+' '+(n<12?'a. m.':'p. m.');}
 function render(){
  const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
  $('conductor').disabled=!data.administrador;
- renderFleet();const hs=$('horarios');hs.replaceChildren();
+ renderFleet();const expanded=new Set([...document.querySelectorAll('.pasajeros-salida[open]')].map(el=>el.id));const hs=$('horarios');hs.replaceChildren();
  const ordenadas=[...data.horarios].sort((a,b)=>Number(b.activo)-Number(a.activo)||a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida));
  for(const h of ordenadas){
   const a=document.createElement('article');a.className='salida-card';
@@ -44,14 +46,14 @@ function render(){
   info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino));
   const estado=p(!h.activo?'Cerrada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':'Disponible para reservar');estado.className='pill';info.append(estado);a.append(info);
   const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';a.append(img);}
-  a.append(tripPassengerList(h));
+  const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
   hs.append(a);
  }if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
  actualizarFoto();renderReservations();renderPassengers();
 }
 function tripPassengerList(h){
- const details=document.createElement('details');details.className='pasajeros-salida';
+ const details=document.createElement('details');details.className='pasajeros-salida';details.id='pasajeros-salida-'+h.id;
  const summary=document.createElement('summary');summary.textContent=h.cupos_ocupados+'/'+h.cupos_totales+' asientos ocupados · Ver pasajeros';
  const list=document.createElement('div');list.className='lista-viajeros';
  details.append(summary,list);let loading=false;
@@ -103,6 +105,7 @@ function renderPassengers(){
 $('login').onsubmit=async e=>{e.preventDefault();if($('entrar').disabled)return;$('entrar').disabled=true;try{const captchaToken=await security().token();const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value,gotrue_meta_security:{captcha_token:captchaToken}})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;security().reset().catch(()=>{});}};
 $('logout').onclick=async()=>{await avisos.stop({unsubscribe:true});const old=session;saveSession(null);data=null;$('mantenimiento-panel').hidden=true;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
 $('reintentar-mantenimiento').onclick=load;$('salir-mantenimiento').onclick=()=>$('logout').onclick();
+$('actualizar-app').onclick=()=>{const url=new URL(location.href);url.searchParams.set('actualizar',String(Date.now()));location.replace(url.href);};
 $('refresh').onclick=load;$('buscar').oninput=renderReservations;$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
@@ -136,3 +139,5 @@ $('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{
  });};
 const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(session&&!busy)void load();}});
 if(session)load();else security();
+
+setInterval(()=>{if(session&&data&&!busy&&!document.hidden)void load();},20000);
