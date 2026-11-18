@@ -40,10 +40,10 @@ u=await ui({registrationFails:true});await u.handlers.load();await new Promise(r
 u=await ui();u.handlers.beforeinstallprompt({preventDefault(){},prompt:async()=>{throw Error('not allowed');}});await u.buttonHandlers.click();assert.equal(u.button.disabled,false);assert.equal(u.help.open,true);
 u=await ui({boxPresent:false});u.handlers.beforeinstallprompt({preventDefault(){throw Error('must preserve native prompt without UI');}});
 const swHandlers={};let requests=[],fail=false,claimed=false;
-const ctx=vm.createContext({URL,Response,self:{registration:{scope:String(base)},clients:{claim:async()=>{claimed=true;}},addEventListener:(n,fn)=>swHandlers[n]=fn},fetch:async r=>{requests.push(r);if(fail)throw Error('offline');return new Response('fresh from server');}});
+const ctx=vm.createContext({URL,Response,self:{registration:{scope:String(base)},clients:{claim:async()=>{claimed=true;}},addEventListener:(n,fn)=>swHandlers[n]=fn},fetch:async (r,options)=>{requests.push({request:r,options});if(fail)throw Error('offline');return new Response('fresh from server');}});
 vm.runInContext(await read('sw.js'),ctx);
 let activation;swHandlers.activate({waitUntil:p=>activation=p});await activation;assert.equal(claimed,true);
-function request(url,mode='navigate',method='GET'){let result;swHandlers.fetch({request:{url,mode,method},respondWith:p=>result=p});return result;}
+function request(url,mode='navigate',method='GET',destination=''){let result;swHandlers.fetch({request:{url,mode,method,destination},respondWith:p=>result=p});return result;}
 assert.equal(request('https://api.example.test/auth/v1/token','cors','POST'),undefined);
 assert.equal(request('https://example.test/ruta200/admin.js','cors'),undefined);
 assert.equal(request('https://example.test/another-site/'),undefined);
@@ -52,3 +52,8 @@ fail=true;response=await request(String(new URL('boleto.html?clave=PRIVATE_TEST_
 assert.equal(response.status,503);assert.equal(response.headers.get('cache-control'),'no-store');const offline=await response.text();assert.match(offline,/no confirma ninguna reservación/);assert.ok(!offline.includes('PRIVATE_TEST_SECRET'));
 console.log('PWA verificada: iconos, alcance /ruta200/, manifest, instalación aceptada/cancelable, ayuda manual, modo instalado, conectividad y registro fallido.');
 console.log('Service worker: navegación por red, API/POST/otros sitios intactos y respuesta sin conexión sin datos privados.');
+
+fail=false;
+response=await request('https://example.test/ruta200/admin.js','cors','GET','script');assert.equal(await response.text(),'fresh from server');assert.equal(requests.at(-1).options.cache,'no-store');
+response=await request('https://example.test/ruta200/admin.html');assert.equal(requests.at(-1).options.cache,'no-store');
+console.log('Actualización: HTML y scripts consultan la red sin reutilizar la caché HTTP.');
