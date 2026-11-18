@@ -79,11 +79,14 @@ button.onclick=async()=>{
  const name=$('nombre'),phone=$('telefono');$('abrir-boleto').hidden=true;
  name.setCustomValidity(name.value.trim().length>=2?'':'Escribe el nombre completo.');
  phone.setCustomValidity(/^\d{10}$/.test(phone.value.trim())?'':'Escribe un teléfono de 10 dígitos.');
- if(!name.reportValidity()||!phone.reportValidity()||!departure.value)return;
+ if(name.value.trim().length<2||name.value.trim().length>80){bookingMessage('Escribe el nombre completo del pasajero para confirmar tu reservación.',true);name.scrollIntoView?.({behavior:'smooth',block:'center'});name.focus?.();name.reportValidity();return;}
+ if(!/^\d{10}$/.test(phone.value.trim())){bookingMessage('No se pudo leer tu teléfono verificado. Vuelve a comprobar tu acceso.',true);return;}
+ if(!departure.value){bookingMessage('Selecciona una hora de salida antes de confirmar.',true);return;}
  const amount=Number(seats.value);const candidates=trips.filter(t=>t.hora===departure.value&&t.disponibles>=amount);
- if(!Number.isInteger(amount)||amount<1||amount>4||!candidates.length){await load();return;}
- let session;busy=true;
- try{session=await passengerSession();}catch(e){busy=false;bookingMessage(e.message,true);return;}
+ if(!Number.isInteger(amount)||amount<1||amount>4){bookingMessage('Elige entre 1 y 4 asientos.',true);return;}
+ if(!candidates.length){await load();bookingMessage('La disponibilidad cambió. Revisa el horario y los asientos y vuelve a confirmar.',true);return;}
+ let session;busy=true;button.disabled=true;button.textContent='COMPROBANDO ACCESO…';bookingMessage('Comprobando tu sesión para confirmar…');
+ try{session=await passengerSession();}catch(e){busy=false;button.disabled=!departure.value;button.textContent='Confirmar mi reservación →';bookingMessage(e.message,true);return;}
  if(!session||!samePhone(session,phone.value)){busy=false;location.replace('index.html');return;}
  const signature=JSON.stringify([name.value.trim(),phone.value.trim(),date.value,origin(),departure.value,amount]);
  const pending=readLocal('r200-pendiente',null);
