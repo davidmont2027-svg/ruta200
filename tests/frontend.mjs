@@ -132,3 +132,16 @@ const timer=driver.intervals.find(t=>t.ms===20000);assert.ok(timer);timer.fn();a
 assert.equal(driver.calls.length,beforePoll+1);assert.equal(driver.get('horarios').children[0],sameCard,'unchanged automatic refresh keeps the open card intact');
 driver.get('actualizar-app').onclick();assert.match(driver.location.href,/actualizar=[0-9]+/);
 console.log('Panel: actualización cada 20 segundos sin reconstruir tarjetas intactas y recarga de app con URL nueva verificadas.');
+
+const blockedNavigation=await app('reservar.js','reservar.html',name=>ok(name==='r200_horarios'?trips:ticket));
+blockedNavigation.get('nombre').value='Pasajero de prueba';blockedNavigation.get('asientos').value='1';
+blockedNavigation.local.set('r200-tickets',JSON.stringify({dato_antiguo:true}));
+Object.defineProperty(blockedNavigation.location,'href',{get:()=> 'https://example.test/ruta200/reservar.html',set:()=>{throw Error('Navegación bloqueada');}});
+await blockedNavigation.get('continuar').onclick();
+assert.equal(blockedNavigation.get('abrir-boleto').hidden,false);assert.match(blockedNavigation.get('abrir-boleto').href,/boleto.html#[a-f0-9]{64}$/);
+assert.match(blockedNavigation.get('estado-confirmacion').textContent,/Reserva confirmada.*Abrir mi boleto/);
+assert.equal(JSON.parse(blockedNavigation.local.get('r200-tickets')).length,1);
+const rejectedBooking=await app('reservar.js','reservar.html',name=>name==='r200_horarios'?ok(trips):({ok:false,json:async()=>({message:'Este número ya tiene una reserva en esa salida'})}));
+rejectedBooking.get('nombre').value='Pasajero de prueba';rejectedBooking.get('asientos').value='1';await rejectedBooking.get('continuar').onclick();
+assert.match(rejectedBooking.get('estado-confirmacion').textContent,/ya tiene una reserva/);assert.equal(rejectedBooking.get('abrir-boleto').hidden,true);
+console.log('Boleto: enlace de respaldo ante navegación bloqueada, historial local inválido y error visible junto al botón verificados.');

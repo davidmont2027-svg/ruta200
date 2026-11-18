@@ -8,16 +8,16 @@ export function setupDriverNotifications({getToken,onReservation}){
 
  function ding(){
   if(!soundOn||!audio||audio.state!=='running')return;
-  try{for(const [offset,frequency] of [[0,880],[.2,1174]]){
+  try{for(const [offset,frequency] of Array.from({length:8},(_,i)=>[i*.38,i%2?1174:880])){
    const oscillator=audio.createOscillator(),gain=audio.createGain(),at=audio.currentTime+offset;
-   oscillator.type='sine';oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.001,at);gain.gain.exponentialRampToValueAtTime(.22,at+.025);gain.gain.exponentialRampToValueAtTime(.001,at+.18);
-   oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(at);oscillator.stop(at+.2);
+   oscillator.type='triangle';oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.001,at);gain.gain.exponentialRampToValueAtTime(.75,at+.035);gain.gain.exponentialRampToValueAtTime(.001,at+.30);
+   oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(at);oscillator.stop(at+.32);
   }}catch{soundOn=false;say('Vuelve a pulsar Activar y probar sonido.');}
  }
  sound.onclick=async()=>{
   try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)throw Error('Este navegador no admite la prueba de sonido.');
    audio=audio||new Constructor();await audio.resume();soundOn=audio.state==='running';if(!soundOn)throw Error('No se pudo activar el sonido. Revisa el volumen y vuelve a intentarlo.');
-   ding();say('Sonido activado mientras el panel esté abierto y visible. Revisa el volumen del teléfono.');
+   ding();say('Timbre fuerte de 3 segundos activado mientras el panel esté abierto y visible. Revisa el volumen del teléfono.');
   }catch(e){say(e.message);}
  };
  async function request(body){
