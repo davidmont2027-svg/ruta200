@@ -6,3 +6,24 @@ self.addEventListener('fetch',event=>{
  if(request.method!=='GET'||request.mode!=='navigate'||url.origin!==scope.origin||!url.pathname.startsWith(scope.pathname))return;
  event.respondWith(fetch(request).catch(()=>new Response(offlineHTML,{status:503,statusText:'Offline',headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}})));
 });
+
+// No cached application files: a worker update can activate without stale-page migrations.
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
+self.addEventListener('push',event=>{
+ let payload={};try{payload=event.data?.json()||{};}catch{}
+ const title=typeof payload.title==='string'?payload.title.slice(0,90):'Nueva reservación · RUTA 200';
+ const body=typeof payload.body==='string'?payload.body.slice(0,180):'Abre tu panel para revisar tus reservaciones.';
+ const tag=typeof payload.tag==='string'?payload.tag.slice(0,100):'r200-aviso';
+ event.waitUntil(Promise.all([
+  self.registration.showNotification(title,{body,tag,icon:new URL('icons/ruta200-192.png',self.registration.scope).href,badge:new URL('icons/ruta200-192.png',self.registration.scope).href,vibrate:[200,100,200],data:{url:new URL('admin.html#reservas-panel',self.registration.scope).href}}),
+  self.clients.matchAll({type:'window',includeUncontrolled:true}).then(clients=>{for(const client of clients)client.postMessage({type:'r200-nueva-reserva'});})
+ ]));
+});
+self.addEventListener('notificationclick',event=>{
+ event.notification.close();
+ const url=new URL('admin.html#reservas-panel',self.registration.scope).href;
+ event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(async clients=>{
+  const client=clients.find(c=>new URL(c.url).pathname===new URL('admin.html',self.registration.scope).pathname);
+  if(client){await client.focus();return client.navigate(url);}return self.clients.openWindow(url);
+ }));
+});
