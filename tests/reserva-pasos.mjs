@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+const ids=new Map(),progress=Array.from({length:5},()=>({classList:{toggle(){}}}));
+const panels=Array.from({length:6},(_,i)=>({dataset:{bookingStep:String(i===5?2:i)},hidden:false}));
+const get=id=>{if(!ids.has(id))ids.set(id,{value:'',hidden:false,disabled:false,textContent:'',checkValidity:()=>true,scrollIntoView(){},focus(){},addEventListener(type,fn){this[type]=fn;},replaceChildren(...children){this.children=children;}});return ids.get(id);};
+get('ruta').value='ida';get('fecha').value='2026-11-20';get('salida').value='06:00';
+const context=vm.createContext({document:{getElementById:get,querySelectorAll:s=>s==='[data-booking-step]'?panels:progress,createElement:()=>({})},encodeURIComponent});
+vm.runInContext(fs.readFileSync(new URL('../reserva-pasos.js',import.meta.url),'utf8'),context);
+assert.equal(panels[0].hidden,false);assert.equal(panels[4].hidden,true);
+get('wizard-next').onclick();assert.equal(panels[1].hidden,false);
+get('wizard-next').onclick();get('continuar').disabled=true;get('wizard-next').onclick();assert.equal(panels[2].hidden,false);assert.match(get('wizard-error').textContent,/disponibilidad/);
+get('continuar').disabled=false;get('wizard-next').onclick();get('nombre').value='';get('wizard-next').onclick();assert.equal(panels[3].hidden,false);assert.match(get('wizard-error').textContent,/nombre/);
+get('nombre').value='Pasajero de prueba';get('wizard-next').onclick();assert.equal(panels[4].hidden,false);assert.equal(get('wizard-next').hidden,true);
+get('wizard-back').onclick();assert.equal(panels[3].hidden,false);
+get('ruta').value='vuelta';get('ruta').change();assert.match(get('booking-map').children[0].title,/Mezcales a Tepic/);
+console.log('Pasos verificados: mapa por sentido, cupos pendientes bloqueados, nombre requerido, confirmación al final y regreso.');
