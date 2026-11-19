@@ -47,11 +47,17 @@ export function credentialJSON(credential){
  if(typeof response.getTransports==='function')body.transports=response.getTransports();
  return {id:credential.id,rawId:encode(credential.rawId),type:credential.type,authenticatorAttachment:credential.authenticatorAttachment||null,response:body,clientExtensionResults:credential.getClientExtensionResults?.()||{}};
 }
-export function setupOperatorPasskeys({getSession,onSession,canRegister,canStart,getCaptcha,onBusy}){
+export function setupOperatorPasskeys({getSession,onSession,canRegister,canStart,getCaptcha,onBusy,onDiagnostic}){
  const $=id=>document.getElementById(id);let active=false,working=false,pending=null,lastRP='';
  const supported=!!(globalThis.isSecureContext&&globalThis.PublicKeyCredential&&typeof globalThis.navigator?.credentials?.create==='function'&&typeof globalThis.navigator?.credentials?.get==='function');
  const write=text=>{$('estado-huella').textContent=text;$('estado-activar-huella').textContent=text;};
- const report=(error,stage)=>write(passkeyError(error)+'\n\n'+passkeyDiagnostic(error,stage,lastRP));
+ const report=(error,stage)=>{
+  write(passkeyError(error)+'\n\n'+passkeyDiagnostic(error,stage,lastRP));
+  const cause=error?.cause||error,name=String(cause?.name||error?.name||'Error').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,60);
+  const standard=['SecurityError','TypeError','EncodingError','InvalidStateError','NotSupportedError','NotAllowedError'];
+  const message=standard.includes(name)?String(cause?.message||error?.message||'').replace(/[A-Za-z0-9_-]{45,}/g,'[omitido]').slice(0,320):'';
+  if(onDiagnostic)void Promise.resolve(onDiagnostic({p_etapa:stage,p_nombre:name,p_codigo:String(error?.code||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80),p_mensaje:message,p_sitio:String(globalThis.location?.hostname||'').slice(0,120),p_dominio:String(lastRP||'').replace(/[^a-zA-Z0-9.-]/g,'').slice(0,120)})).catch(()=>{});
+ };
  function refresh(){for(const id of ['entrar-huella','activar-huella'])$(id).disabled=!active||working;$('entrar-huella').textContent=pending&&!pending.register?'Continuar con huella / PIN':'Entrar con huella / PIN';$('activar-huella').textContent=pending?.register?'Confirmar en este celular':'Activar en este celular';}
  async function client(){const {createClient}=await import('./auth-assets/supabase-2.105.0.mjs');return createClient(API,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,experimental:{passkey:true}}});}
  async function check(){

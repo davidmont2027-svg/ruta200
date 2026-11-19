@@ -1,4 +1,4 @@
-import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-3';
+import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-4';
 import {setupDriverNotifications} from './avisos.js?v=20261118-timbre3';
 import {createCaptcha} from './captcha.js';
 import {API,KEY,rpc,today,message} from './r200.js';
@@ -17,6 +17,11 @@ async function access(){
  const s=await res.json();if(!res.ok){saveSession(null);throw new Error('La sesión venció. Vuelve a entrar.');}saveSession({...s,expires_at:Date.now()+s.expires_in*1000});return s.access_token;
 }
 const call=async(name,body)=>rpc(name,body,await access());
+async function diagnosticoHuella(detalle){
+ try{sessionStorage.setItem('r200-huella-diagnostico',JSON.stringify(detalle));}catch{}
+ if(session&&data){try{await call('r200_diagnostico_huella',detalle);sessionStorage.removeItem('r200-huella-diagnostico');}catch{}}
+}
+function enviarDiagnosticoGuardado(){try{const raw=sessionStorage.getItem('r200-huella-diagnostico');if(raw)void diagnosticoHuella(JSON.parse(raw));}catch{}}
 function p(text){const e=document.createElement('p');e.textContent=text;return e;}
 function action(label,fn){const e=document.createElement('button');e.className='small';e.textContent=label;e.onclick=()=>mutate(fn);return e;}
 function showMaintenance(error){
@@ -28,7 +33,7 @@ function showMaintenance(error){
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
  if(loading)return;loading=true;
- try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data);data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data);data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();enviarDiagnosticoGuardado();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
  catch(e){if(showMaintenance(e))return;if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
  finally{loading=false;}
 }
@@ -196,7 +201,7 @@ function ajusteAsientos(h){
  counter.append(minus,output,plus);wrap.append(heading,counter,save,status,p('Las reservas confirmadas se conservan.'));update();return wrap;
 }
 
-const huella=setupOperatorPasskeys({getSession:async()=>{await access();return session;},canRegister:()=>!!(session&&data&&!busy),canStart:()=>!busy&&!$('entrar').disabled,getCaptcha:()=>security().token(),onSession:async s=>{saveSession(s);await load();},onBusy:value=>{busy=value;$('entrar').disabled=value;if(!value)security().reset().catch(()=>{});}});
+const huella=setupOperatorPasskeys({getSession:async()=>{await access();return session;},canRegister:()=>!!(session&&data&&!busy),canStart:()=>!busy&&!$('entrar').disabled,getCaptcha:()=>security().token(),onSession:async s=>{saveSession(s);await load();},onDiagnostic:diagnosticoHuella,onBusy:value=>{busy=value;$('entrar').disabled=value;if(!value)security().reset().catch(()=>{});}});
 const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(session&&!busy)void load();}});
 if(session)load();else security();
 
