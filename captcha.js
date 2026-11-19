@@ -30,8 +30,13 @@ export function createCaptcha(container){
  ready.catch(()=>{});
  return {
   ready,
-  async token(){
+  async token({wait=false}={}){
    const turnstile=await ready;
+   if(wait&& (error||!current||turnstile.isExpired(widget))){
+    current='';error='';turnstile.reset(widget);
+    const deadline=Date.now()+25000;
+    while(!current&&!error&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,150));
+   }
    if(error||!current||turnstile.isExpired(widget))throw new Error(error||'Completa la comprobación de seguridad antes de continuar.');
    return current;
   },

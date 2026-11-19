@@ -68,7 +68,7 @@ export function setupOperatorPasskeys({getSession,onSession,canRegister,canStart
   working=true;onBusy(true);refresh();write('Preparando comprobación segura…');
   let stage='cargar modulo';try{const sdk=await client();let result;stage='preparar sesion';
    if(register){const session=await getSession();if(!session)throw Error('Sin sesión');const linked=await sdk.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token});if(linked.error)throw linked.error;stage='obtener registro';result=await sdk.auth.passkey.startRegistration();}
-   else {stage='comprobacion de seguridad';const captchaToken=await getCaptcha();stage='obtener acceso';result=await sdk.auth.passkey.startAuthentication({options:{captchaToken}});}
+   else {write('Esperando la comprobación de seguridad…');stage='comprobacion de seguridad';const captchaToken=await getCaptcha();stage='obtener acceso';result=await sdk.auth.passkey.startAuthentication({options:{captchaToken}});}
    if(result.error)throw result.error;if(!result.data?.challenge_id||!result.data?.options)throw Error('Respuesta sin desafío');
    stage='leer opciones';lastRP=result.data.options.rp?.id||result.data.options.rpId||'';
    pending={register,sdk,id:result.data.challenge_id,options:credentialOptions(result.data.options,register),expires:Date.now()+120000};

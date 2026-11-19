@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+let callback,resets=0,expired=false,fail=false;
+const turnstile={render:(node,options)=>{callback=options.callback;return 'widget';},isExpired:()=>expired,reset:()=>{resets++;expired=false;if(!fail)setTimeout(()=>callback('fresh-token'),5);}};
+const context=vm.createContext({window:{turnstile},document:{getElementById:()=>({})},Date,Promise,Error,setTimeout:fn=>setTimeout(fn,1)});
+const mod=new vm.SourceTextModule(fs.readFileSync(new URL('../captcha.js',import.meta.url),'utf8'),{context});await mod.link(()=>{});await mod.evaluate();
+const captcha=mod.namespace.createCaptcha('test');await captcha.ready;
+await assert.rejects(captcha.token(),/Completa/);
+assert.equal(await captcha.token({wait:true}),'fresh-token');assert.equal(resets,1);
+assert.equal(await captcha.token({wait:true}),'fresh-token');assert.equal(resets,1);
+expired=true;assert.equal(await captcha.token({wait:true}),'fresh-token');assert.equal(resets,2);
+console.log('CAPTCHA: espera token fresco, renueva vencido y conserva token vigente.');

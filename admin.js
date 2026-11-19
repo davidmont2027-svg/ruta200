@@ -1,6 +1,6 @@
-import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-4';
+import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-5';
 import {setupDriverNotifications} from './avisos.js?v=20261118-timbre3';
-import {createCaptcha} from './captcha.js';
+import {createCaptcha} from './captcha.js?v=20261119-wait1';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false;
@@ -201,7 +201,7 @@ function ajusteAsientos(h){
  counter.append(minus,output,plus);wrap.append(heading,counter,save,status,p('Las reservas confirmadas se conservan.'));update();return wrap;
 }
 
-const huella=setupOperatorPasskeys({getSession:async()=>{await access();return session;},canRegister:()=>!!(session&&data&&!busy),canStart:()=>!busy&&!$('entrar').disabled,getCaptcha:()=>security().token(),onSession:async s=>{saveSession(s);await load();},onDiagnostic:diagnosticoHuella,onBusy:value=>{busy=value;$('entrar').disabled=value;if(!value)security().reset().catch(()=>{});}});
+const huella=setupOperatorPasskeys({getSession:async()=>{await access();return session;},canRegister:()=>!!(session&&data&&!busy),canStart:()=>!busy&&!$('entrar').disabled,getCaptcha:()=>security().token({wait:true}),onSession:async s=>{saveSession(s);await load();},onDiagnostic:diagnosticoHuella,onBusy:value=>{busy=value;$('entrar').disabled=value;if(!value)security().reset().catch(()=>{});}});
 const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(session&&!busy)void load();}});
 if(session)load();else security();
 
