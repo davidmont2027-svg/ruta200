@@ -1,0 +1,41 @@
+-- Prueba transaccional: no conserva salidas, reservas ni avisos ficticios.
+begin;
+do $test$
+declare c public.conductores; otro public.conductores; resultado jsonb; h public.horarios; id_nuevo bigint; reserva bigint; fecha_prueba date:=current_date+600; fallo boolean;
+begin
+ select * into c from public.conductores where activo and usuario_id is not null and not exists(select 1 from r200_privado.operadores_mantenimiento m where m.usuario_id=conductores.usuario_id) order by id limit 1;
+ select * into otro from public.conductores where activo and usuario_id is not null and usuario_id<>c.usuario_id order by id limit 1;
+ if c.id is null or otro.id is null then raise exception 'Se requieren dos conductores para verificar permisos'; end if;
+ perform set_config('request.jwt.claim.sub',c.usuario_id::text,true);
+ resultado:=public.r200_publicar_viaje(c.id,fecha_prueba,'04:00','Tepic',4,'Punto de prueba sin guardar');id_nuevo:=(resultado->>'id')::bigint;
+ select * into h from public.horarios where id=id_nuevo;
+ if h.cupos_totales<>4 or h.punto_encuentro<>'Punto de prueba sin guardar' then raise exception 'No guardó publicación'; end if;
+ perform public.r200_ajustar_disponibles(h.id,2,0,4);
+ if (select cupos_totales from public.horarios where id=h.id)<>2 then raise exception 'No bajó dos asientos'; end if;
+ resultado:=public.r200_publicar_viaje(c.id,fecha_prueba,'04:00','Tepic',4,'Texto del reintento');
+ if not (resultado->>'ya_publicado')::boolean or (select cupos_totales from public.horarios where id=h.id)<>2 then raise exception 'Reintento alteró disponibilidad'; end if;
+ fallo:=false;begin perform public.r200_ajustar_disponibles(h.id,1,0,4);exception when others then fallo:=sqlerrm like '%disponibilidad cambió%';end;
+ if not fallo then raise exception 'No rechazó dato obsoleto'; end if;
+ perform public.r200_ajustar_disponibles(h.id,0,0,2);
+ if (select cupos_totales from public.horarios where id=h.id)<>0 then raise exception 'No cerró los cuatro lugares'; end if;
+ perform public.r200_ajustar_disponibles(h.id,4,0,0);
+ insert into public.reservaciones(horario_id,nombre_pasajero,telefono_pasajero,asientos,clave_hash) values(h.id,'Prueba sin guardar','0000000000',2,encode(sha256(convert_to(repeat('e',64),'UTF8')),'hex')) returning id into reserva;
+ select * into h from public.horarios where id=id_nuevo;
+ if h.cupos_ocupados<>2 then raise exception 'No contabilizó la reserva'; end if;
+ perform public.r200_ajustar_disponibles(h.id,0,2,4);
+ if (select estado from public.reservaciones where id=reserva)<>'confirmada' then raise exception 'Alteró una reserva confirmada'; end if;
+ fallo:=false;begin perform public.r200_ajustar_disponibles(h.id,3,2,2);exception when others then fallo:=sqlerrm like '%capacidad del carro%';end;
+ if not fallo then raise exception 'Permitió exceder capacidad'; end if;
+ fallo:=false;begin insert into public.reservaciones(horario_id,nombre_pasajero,telefono_pasajero,asientos) values(h.id,'Sin cupos','0000000001',1);exception when others then fallo:=sqlerrm like '%asientos disponibles%';end;
+ if not fallo then raise exception 'El trigger permitió sobreventa'; end if;
+ perform set_config('request.jwt.claim.sub',otro.usuario_id::text,true);
+ fallo:=false;begin perform public.r200_ajustar_disponibles(h.id,1,2,2);exception when others then fallo:=sqlerrm like '%propias salidas%';end;
+ if not fallo and not public.es_administrador() then raise exception 'Permitió editar otro conductor'; end if;
+ perform set_config('request.jwt.claim.sub','',true);
+ fallo:=false;begin perform public.r200_ajustar_disponibles(h.id,1,2,2);exception when others then fallo:=sqlerrm like '%Inicia sesión%';end;
+ if not fallo then raise exception 'Permitió acceso sin sesión'; end if;
+ if has_function_privilege('anon','public.r200_ajustar_disponibles(bigint,integer,integer,integer)','execute') then raise exception 'Permiso anónimo indebido'; end if;
+ raise notice 'Publicación, reintento, cierre total, reapertura, reservas existentes, sobreventa, permisos y conflicto: verificados';
+end $test$;
+rollback;
+select 'Pruebas completadas y revertidas' as resultado;

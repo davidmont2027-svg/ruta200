@@ -157,3 +157,17 @@ franciscoBooking.get('nombre').value='Pasajero de prueba';await franciscoBooking
 assert.equal(franciscoBooking.calls.find(c=>c.name==='r200_reservar').body.p_horario,55);
 assert.match(franciscoBooking.location.href,/boleto.html#[a-f0-9]{64}$/);
 console.log('Confirmación: nombre faltante explica el bloqueo junto al botón; salida de Francisco 19:48 genera boleto.');
+
+// Publicación real por pasos: no mutar el servidor hasta la revisión final.
+const publisher=await app('admin.js','admin.html',name=>ok(name==='r200_panel'?driverPanel:name==='r200_publicar_viaje'?{id:88,ya_publicado:false}:name==='r200_ajustar_disponibles'?{disponibles:2,confirmados:0}:{}),{sessionData:operator});
+const submitPublication=()=>publisher.get('publicar-form').onsubmit({preventDefault(){}});
+publisher.get('publicar-origen').value='Tepic';publisher.get('publicar-fecha').value='2031-01-20';submitPublication();
+assert.equal(publisher.get('publicar-paso-1').hidden,false);publisher.get('publicar-menos').onclick();submitPublication();
+assert.equal(publisher.get('publicar-paso-2').hidden,false);submitPublication();assert.match(publisher.get('publicar-error').textContent,/hora/);
+publisher.get('publicar-hora').value='06:30';submitPublication();submitPublication();assert.match(publisher.get('publicar-error').textContent,/encuentro/);
+publisher.get('publicar-encuentro').value='Astas Las Banderas';submitPublication();
+assert.equal(publisher.get('publicar-paso-4').hidden,false);assert.equal(publisher.calls.some(c=>c.name==='r200_publicar_viaje'),false);
+submitPublication();await flush();await flush();
+assert.equal(publisher.get('publicar-listo').hidden,false);const posted=publisher.calls.find(c=>c.name==='r200_publicar_viaje');assert.equal(posted.body.p_conductor,1);assert.equal(posted.body.p_asientos,3);assert.equal(posted.body.p_encuentro,'Astas Las Banderas');assert.equal(posted.headers.Authorization,'Bearer '+operator.access_token);
+const adjust=publisher.get('horarios').children[0].children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
+console.log('Publicación en cinco pasos y control − / + / Aceptar: validación, envío autenticado, punto de encuentro y protección ante datos obsoletos verificados.');

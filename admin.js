@@ -46,6 +46,8 @@ function render(){
   info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino));
   const estado=p(!h.activo?'Cerrada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':'Disponible para reservar');estado.className='pill';info.append(estado);a.append(info);
   const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';a.append(img);}
+  if(h.punto_encuentro)info.append(p('Encuentro: '+h.punto_encuentro));
+  if(h.activo&&h.fecha>=today(h.origen))a.append(ajusteAsientos(h));
   const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
   hs.append(a);
@@ -137,6 +139,62 @@ $('crear').onsubmit=e=>{e.preventDefault();mutate(async()=>{
  try{const result=await call('r200_crear_rol',{p_conductor:c.id,p_salidas:salidas});$('rol-filas').replaceChildren();filas=[];nuevaFila();guardarRol();message($('rol-estado'),'Rol publicado: '+result.creadas+' salidas nuevas; '+result.ya_publicadas+' ya estaban publicadas.');}
  finally{for(const el of controls)el.disabled=false;}
  });};
+let publicarPaso=0,publicarAsientos=4;
+try{const draft=JSON.parse(sessionStorage.getItem('r200-publicar-borrador'));if(draft){$('publicar-origen').value=draft.origen==='Mezcales'?'Mezcales':'Tepic';$('publicar-fecha').value=draft.fecha||'';$('publicar-hora').value=draft.hora||'';$('publicar-encuentro').value=String(draft.encuentro||'').slice(0,160);publicarAsientos=Number.isInteger(draft.asientos)&&draft.asientos>=1&&draft.asientos<=4?draft.asientos:4;}}catch{}
+if(!$('publicar-fecha').value)$('publicar-fecha').value=today($('publicar-origen').value);
+function guardarPublicacion(){try{sessionStorage.setItem('r200-publicar-borrador',JSON.stringify({origen:$('publicar-origen').value,fecha:$('publicar-fecha').value,hora:$('publicar-hora').value,encuentro:$('publicar-encuentro').value,asientos:publicarAsientos}));}catch{}}
+function mapaPublicacion(){
+ const origen=$('publicar-origen').value,destino=origen==='Tepic'?'Mezcales':'Tepic';
+ const from=encodeURIComponent(origen+', Nayarit, México'),to=encodeURIComponent(destino+', Nayarit, México');
+ const frame=document.createElement('iframe');frame.title='Mapa de '+origen+' a '+destino;frame.src='https://maps.google.com/maps?saddr='+from+'&daddr='+to+'&output=embed';frame.loading='lazy';
+ const link=document.createElement('a');link.textContent='Abrir recorrido en Google Maps ↗';link.href='https://www.google.com/maps/dir/?api=1&origin='+from+'&destination='+to+'&travelmode=driving';link.target='_blank';link.rel='noopener';$('publicar-mapa').replaceChildren(frame,link);
+}
+function mostrarPublicacion(){
+ for(let i=0;i<5;i++)$('publicar-paso-'+i).hidden=i!==publicarPaso;
+ const labels=['Tu recorrido','Tus asientos','Hora de salida','Punto de encuentro','Revisa tu salida'];
+ $('publicar-progreso').textContent='Paso '+(publicarPaso+1)+' de 5 · '+labels[publicarPaso];
+ $('publicar-cantidad').textContent=String(publicarAsientos);$('publicar-atras').hidden=publicarPaso===0;
+ $('publicar-menos').disabled=publicarAsientos<=1;$('publicar-mas').disabled=publicarAsientos>=4;
+ $('publicar-siguiente').textContent=publicarPaso===4?'Publicar mi viaje →':'Continuar →';
+ $('publicar-zona').textContent='Hora local de '+$('publicar-origen').value+'.';
+ $('publicar-fecha').min=today($('publicar-origen').value);
+ $('publicar-resumen-ruta').textContent=$('publicar-origen').value+' → '+($('publicar-origen').value==='Tepic'?'Mezcales':'Tepic');
+ $('publicar-resumen-fecha').textContent=($('publicar-fecha').value?fechaVisible($('publicar-fecha').value):'')+' · '+($('publicar-hora').value?horaVisible($('publicar-hora').value):'')+' (hora de '+$('publicar-origen').value+')';
+ $('publicar-resumen-asientos').textContent=publicarAsientos+' asiento(s) disponibles';$('publicar-resumen-encuentro').textContent=$('publicar-encuentro').value.trim();
+}
+for(const id of ['publicar-fecha','publicar-hora','publicar-encuentro'])$(id).oninput=guardarPublicacion;
+$('publicar-origen').onchange=()=>{guardarPublicacion();mapaPublicacion();mostrarPublicacion();};
+$('publicar-menos').onclick=()=>{publicarAsientos=Math.max(1,publicarAsientos-1);guardarPublicacion();mostrarPublicacion();};
+$('publicar-mas').onclick=()=>{publicarAsientos=Math.min(4,publicarAsientos+1);guardarPublicacion();mostrarPublicacion();};
+$('publicar-atras').onclick=()=>{if(busy)return;publicarPaso=Math.max(0,publicarPaso-1);message($('publicar-error'),'');mostrarPublicacion();};
+$('publicar-otra').onclick=()=>{$('publicar-listo').hidden=true;$('publicar-form').hidden=false;publicarPaso=0;mostrarPublicacion();};
+$('publicar-form').onsubmit=e=>{e.preventDefault();if(busy)return;
+ const fecha=$('publicar-fecha').value,hora=$('publicar-hora').value,encuentro=$('publicar-encuentro').value.trim(),origen=$('publicar-origen').value;
+ let error='';
+ if(publicarPaso===0&&(!fecha||fecha<today(origen)))error='Elige una fecha de hoy en adelante.';
+ if(publicarPaso===2&&!/^\d{2}:\d{2}$/.test(hora))error='Elige la hora de salida.';
+ if(publicarPaso===3&&(encuentro.length<3||encuentro.length>160))error='Escribe el punto de encuentro (3 a 160 caracteres).';
+ message($('publicar-error'),error,!!error);if(error)return;
+ if(publicarPaso<4){publicarPaso++;mostrarPublicacion();return;}
+ const conductor=Number($('conductor').value);if(!data?.conductores.some(c=>c.id===conductor)){message($('publicar-error'),'Selecciona tu conductor y vehículo.',true);return;}
+ const body={p_conductor:conductor,p_fecha:fecha,p_hora:hora,p_origen:origen,p_asientos:publicarAsientos,p_encuentro:encuentro};
+ void mutate(async()=>{const inputs=[$('publicar-origen'),$('publicar-fecha'),$('publicar-hora'),$('publicar-encuentro')];for(const input of inputs)input.disabled=true;
+ try{const result=await call('r200_publicar_viaje',body);$('publicar-form').hidden=true;$('publicar-listo').hidden=false;message($('publicar-resultado'),result.ya_publicado?'Esta salida ya estaba publicada. Conservamos sus asientos y punto de encuentro actuales.':'Salida publicada. Ya pueden reservar y puedes ajustar sus lugares en «Mis salidas».');try{sessionStorage.removeItem('r200-publicar-borrador');}catch{}}
+ catch(error){message($('publicar-error'),error.message,true);throw error;}finally{for(const input of inputs)input.disabled=false;}
+ });
+};
+mostrarPublicacion();mapaPublicacion();
+function ajusteAsientos(h){
+ const wrap=document.createElement('section');wrap.className='ajuste-asientos';const heading=document.createElement('h3');heading.textContent='Asientos disponibles';
+ let disponibles=Math.max(0,Number(h.cupos_totales)-Number(h.cupos_ocupados));const max=Math.max(0,4-Number(h.cupos_ocupados));
+ const counter=document.createElement('div');counter.className='seat-counter';const minus=document.createElement('button'),output=document.createElement('output'),plus=document.createElement('button'),save=document.createElement('button'),status=document.createElement('p');
+ minus.type=plus.type=save.type='button';minus.textContent='−';plus.textContent='+';minus.ariaLabel='Reducir asientos disponibles';plus.ariaLabel='Aumentar asientos disponibles';save.textContent='Aceptar';status.className='muted';status.setAttribute?.('role','status');
+ const update=()=>{output.textContent=String(disponibles);minus.disabled=disponibles===0;plus.disabled=disponibles>=max;};
+ minus.onclick=()=>{disponibles=Math.max(0,disponibles-1);update();};plus.onclick=()=>{disponibles=Math.min(max,disponibles+1);update();};
+ save.onclick=()=>{if(busy)return;void mutate(async()=>{try{const result=await call('r200_ajustar_disponibles',{p_horario:h.id,p_disponibles:disponibles,p_ocupados_esperados:Number(h.cupos_ocupados),p_total_esperado:Number(h.cupos_totales)});message($('status'),'Actualizado: '+result.disponibles+' asiento(s) disponibles.');}catch(error){message(status,error.message,true);throw error;}});};
+ counter.append(minus,output,plus);wrap.append(heading,counter,save,status,p('Las reservas confirmadas se conservan.'));update();return wrap;
+}
+
 const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(session&&!busy)void load();}});
 if(session)load();else security();
 

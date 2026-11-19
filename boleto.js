@@ -2,7 +2,7 @@ import {rpc,saveTicket,ticketLink,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id),key=location.hash.slice(1);let ticket,busy=false;
 function render(t){
- ticket=t;const foto=fotosVehiculos[t.vehiculo_id];const img=$('foto-carro');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}$('conductor-boleto').textContent='Conductor: '+(t.conductor||'Por confirmar');
+ ticket=t;$('encuentro-boleto').hidden=!t.punto_encuentro;$('encuentro-boleto').textContent=t.punto_encuentro?'Punto de encuentro: '+t.punto_encuentro:'';const foto=fotosVehiculos[t.vehiculo_id];const img=$('foto-carro');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}$('conductor-boleto').textContent='Conductor: '+(t.conductor||'Por confirmar');
  for(const [id,value] of Object.entries({folio:'R200-'+t.folio.toUpperCase(),fecha:t.fecha,hora:t.hora+' (hora de '+t.origen+')',origen:t.origen,destino:t.destino,asientos:t.asientos+' lugar(es)',pasajero:t.pasajero,telefono:t.telefono,vehiculo:t.vehiculo,total:'$'+t.total+' MXN'}))$(id).textContent=value;
  $('folio').style.fontSize='15px';$('folio').style.overflowWrap='anywhere';
  $('confirmacion').textContent=t.estado==='confirmada'?'🎟️ RESERVACIÓN CONFIRMADA':t.estado==='cancelada'?'RESERVACIÓN CANCELADA':'AUSENCIA REGISTRADA';
@@ -18,5 +18,5 @@ async function load(){
 }
 $('actualizar-boleto').onclick=load;
 $('cancelar').onclick=async()=>{if(busy||!ticket||!confirm('¿Cancelar esta reservación y liberar tus '+ticket.asientos+' asiento(s)?'))return;busy=true;$('cancelar').disabled=true;try{render(await rpc('r200_cancelar',{p_clave:key}));}catch(e){message($('estado-boleto'),e.message,true);}finally{busy=false;}};
-$('compartir').onclick=()=>{if(!ticket)return;const text='🎟️ RUTA 200\n'+ticket.pasajero+'\n'+ticket.origen+' → '+ticket.destino+'\n'+ticket.fecha+' · '+ticket.hora+' (hora de '+ticket.origen+')\n'+ticket.asientos+' asiento(s) · $'+ticket.total+' MXN\nEstado: '+ticket.estado+'\nVehículo: '+ticket.vehiculo+'\nEnlace privado: '+ticketLink(key);window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank','noopener');};
+$('compartir').onclick=()=>{if(!ticket)return;const text='🎟️ RUTA 200\n'+ticket.pasajero+'\n'+ticket.origen+' → '+ticket.destino+'\n'+ticket.fecha+' · '+ticket.hora+' (hora de '+ticket.origen+')\n'+ticket.asientos+' asiento(s) · $'+ticket.total+' MXN\nEstado: '+ticket.estado+(ticket.punto_encuentro?'\nEncuentro: '+ticket.punto_encuentro:'')+'\nVehículo: '+ticket.vehiculo+'\nEnlace privado: '+ticketLink(key);window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank','noopener');};
 load();

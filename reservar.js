@@ -58,7 +58,7 @@ function renderTripCards(){
   const title=document.createElement('strong');title.textContent=trip.conductor||'Conductor por confirmar';
   const car=document.createElement('p');car.textContent=trip.vehiculo||'Vehículo asignado';
   const details=document.createElement('p');details.textContent=trip.hora+' (hora de '+origin()+') · '+trip.disponibles+' lugar(es)';
-  card.append(title,car,details);list.append(card);
+  card.append(title,car,details);if(trip.punto_encuentro){const point=document.createElement('p');point.textContent='Encuentro: '+trip.punto_encuentro;card.append(point);}list.append(card);
  }
  if(selected.length){const note=document.createElement('p');note.className='muted';note.textContent='Elige tu horario. El carro se asigna al confirmar, según los lugares disponibles.';list.append(note);}
 }

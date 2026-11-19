@@ -40,3 +40,13 @@ Nunca incluir contraseñas, llaves privadas ni datos reales de pasajeros en este
 La asociación usa el identificador del vehículo. El panel muestra una galería y cada salida identifica carro y conductor; la consulta pública muestra fotos, nombres y cupos del horario seleccionado. El pasajero sigue eligiendo horario, con asignación de carro según disponibilidad. El boleto confirmado muestra el conductor del viaje y su vehículo.
 
 Se reutilizaron las imágenes preparadas en los chats anteriores, sin modificar la portada. La migración 005 ya se aplicó a Supabase y conserva las autorizaciones existentes. No se cambiaron nombres, cuentas, horarios ni reservas reales. Las pruebas SQL para las cinco relaciones se revirtieron al terminar; el frontend verifica fotos, nombres, modelos y hora, además de los flujos existentes.
+
+## Publicación paso a paso y lugares disponibles
+
+El panel conserva las cuentas y permisos existentes. El formulario principal publica una salida por recorrido/fecha, asientos, hora local, punto de encuentro manual y revisión. La publicación múltiple anterior sigue disponible en «Publicar varias salidas a la vez». Un reintento de la misma salida devuelve su identificador existente sin restablecer sus cupos ni su punto de encuentro.
+
+Cada salida futura abierta permite ajustar lugares disponibles con − / + / Aceptar. La función autenticada bloquea la fila de horario, verifica propiedad, fecha, capacidad y los valores esperados de cupos. Los cupos ocupados no se modifican: el límite efectivo publicado es ocupados + disponibles. Se admite cero para retirar todos los lugares libres sin cancelar boletos; el trigger de reservaciones mantiene el control de sobreventa. Si la disponibilidad cambió desde que se abrió el panel, el ajuste se rechaza y se pide actualizar.
+
+El punto de encuentro se guarda en la salida, se muestra en los carros del horario y aparece en el boleto y su mensaje de WhatsApp. No usa Google Places ni autocompletado de pago.
+
+SQL aplicado mediante `apply_migration`, nombre `publicacion_y_asientos`, conservado en `supabase/publicacion_y_asientos.sql`. Verificación con `node --experimental-vm-modules tests/frontend.mjs`, `node tests/reserva-pasos.mjs` y `tests/publicacion-asientos.sql` ejecutado con BEGIN/ROLLBACK; las pruebas no conservaron datos ficticios. Las funciones nuevas requieren sesión, respetan mantenimiento individual y autorizan únicamente al dueño de la salida o al administrador.
