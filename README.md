@@ -57,11 +57,11 @@ El acceso con correo/contraseña conserva su funcionamiento. `operator-passkeys.
 
 Dependencia local fijada: `@supabase/supabase-js` 2.105.0; bundle oficial npm con integridad verificada, licencia y procedencia en `auth-assets/`. Se añadió un export ESM para `createClient`. Las llaves son una función experimental del proveedor; la contraseña se mantiene disponible. Pruebas: `node --experimental-vm-modules tests/operator-passkeys.mjs` y `tests/frontend.mjs`.
 
-Pendiente de activación en el Dashboard de Supabase → Authentication → Passkeys:
+Configuración activada y verificada en el Dashboard de Supabase → Authentication → Passkeys:
 
 - Enable Passkey authentication: activado.
 - Relying Party Display Name: `RUTA 200`.
 - Relying Party ID: `davidmont2027-svg.github.io`.
 - Relying Party Origins: `https://davidmont2027-svg.github.io`.
 
-Conservar el RP ID una vez registradas las primeras llaves. Cada conductor debe entrar con su contraseña y pulsar «Activar en este celular» para registrar la llave en su cuenta. No se registran llaves por cuenta de otra persona. Mientras el servidor no esté habilitado, la interfaz informa que está pendiente y no simula una activación.
+Conservar el RP ID una vez registradas las primeras llaves. Cada conductor debe entrar con su contraseña y pulsar «Activar en este celular» para registrar la llave en su cuenta. No se registran llaves por cuenta de otra persona. Se verificaron `passkeys_enabled: true` y el botón de acceso habilitado en la versión publicada. El registro y la prueba biométrica de cada conductor deben realizarse en su propio dispositivo. Si en el futuro se desactiva la función del servidor, la interfaz informa que está pendiente y no simula una activación.
