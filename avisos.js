@@ -4,7 +4,7 @@ export function setupDriverNotifications({getToken,onReservation}){
  let started=false,registration=null,active=false,working=false,audio=null,soundOn=false,seen=null;
  const supported=typeof navigator!=='undefined'&&'serviceWorker' in navigator&&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window;
  const say=text=>{status.textContent=text;};
- const controls=()=>{activate.disabled=working||!supported;test.disabled=working||!active;disable.disabled=working||!active;};
+ const controls=()=>{activate.hidden=active;disable.hidden=true;activate.disabled=working||!supported;test.disabled=working||!active;disable.disabled=working||!active;};
 
  function ding(){
   if(!soundOn||!audio||audio.state!=='running')return;
@@ -14,6 +14,11 @@ export function setupDriverNotifications({getToken,onReservation}){
    oscillator.connect(gain);gain.connect(audio.destination);oscillator.start(at);oscillator.stop(at+.32);
   }}catch{soundOn=false;say('Vuelve a pulsar Activar y probar sonido.');}
  }
+ async function enableSound(){
+  try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)return;audio=audio||new Constructor();await audio.resume();soundOn=audio.state==='running';}catch{soundOn=false;}
+ }
+ document.addEventListener?.('pointerdown',()=>{if(started)void enableSound();},{passive:true});
+ document.addEventListener?.('keydown',()=>{if(started)void enableSound();});
  sound.onclick=async()=>{
   try{const Constructor=window.AudioContext||window.webkitAudioContext;if(!Constructor)throw Error('Este navegador no admite la prueba de sonido.');
    audio=audio||new Constructor();await audio.resume();soundOn=audio.state==='running';if(!soundOn)throw Error('No se pudo activar el sonido. Revisa el volumen y vuelve a intentarlo.');
@@ -37,16 +42,19 @@ export function setupDriverNotifications({getToken,onReservation}){
   return registration;
  }
  async function run(fn){if(working)return;working=true;controls();try{await fn();}catch(e){say(e.message);}finally{working=false;controls();}}
- activate.onclick=()=>run(async()=>{
-  if(!supported)return;
-  // Ask in the driver's click handler, before any network request (required on iPhone).
-  const permission=await window.Notification.requestPermission();
-  if(permission!=='granted'){say('Permiso no concedido. Permite las notificaciones de RUTA 200 en la configuración de tu navegador o teléfono.');return;}
+ async function connect(){
   await getRegistration();let sub=await subscription();
   const config=await request({action:'config',endpoint:sub?.endpoint});
-  if(sub&&sub.options?.applicationServerKey){const current=new Uint8Array(sub.options.applicationServerKey),next=decode(config.publicKey);if(current.length!==next.length||current.some((v,i)=>v!==next[i])){await sub.unsubscribe();sub=null;}}
   if(!sub)sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decode(config.publicKey)});
-  await request({action:'subscribe',subscription:sub.toJSON()});active=true;say('Avisos activados en este celular. Pulsa «Enviar prueba» para comprobarlos.');
+  await request({action:'subscribe',subscription:sub.toJSON()});
+  active=true;controls();say('Avisos de reservas activos en este celular. Se recuperan automáticamente al abrir la app.');
+ }
+ activate.onclick=()=>run(async()=>{
+  if(!supported)return;
+  void enableSound();
+  const permission=await window.Notification.requestPermission();
+  if(permission!=='granted'){say('Permiso no concedido. Permite las notificaciones de RUTA 200 en la configuración de tu navegador o teléfono.');return;}
+  await connect();
  });
  test.onclick=()=>run(async()=>{const sub=await subscription();if(!sub)throw Error('Vuelve a activar los avisos.');await request({action:'test',endpoint:sub.endpoint});say('Prueba enviada. Revisa las notificaciones de tu teléfono. El sonido depende de tu volumen y del modo silencio.');});
  async function unsubscribe(){
@@ -65,9 +73,13 @@ export function setupDriverNotifications({getToken,onReservation}){
    if(fresh.length){say('Nueva reservación recibida. Revisa los pasajeros de tu salida.');if(!document.hidden)ding();}
   },
   async start(){
-   if(started)return;started=true;
+   if(started&&active)return;if(working)return;started=true;
    if(!supported){say('Este navegador no admite estos avisos. En iPhone, instala RUTA 200 y abre la app desde su ícono. En Android, usa Chrome.');return;}
-   await run(async()=>{await getRegistration();const sub=await subscription();const state=await request({action:'config',endpoint:sub?.endpoint});active=!!sub&&state.active&&window.Notification.permission==='granted';say(active?'Avisos activos en este celular. Puedes enviar una prueba.':'Activa los avisos para recibir nuevas reservas de tus viajes.');});
+   void enableSound();
+   await run(async()=>{
+    if(window.Notification.permission==='granted')await connect();
+    else say(window.Notification.permission==='denied'?'Las notificaciones están bloqueadas en el celular. Permítelas en la configuración del navegador.':'Permite las notificaciones una sola vez para recibir nuevas reservas.');
+   });
   },
   async stop({unsubscribe:remove=false}={}){started=false;seen=null;soundOn=false;if(audio){void audio.close().catch(()=>{});audio=null;}if(remove&&registration){try{await unsubscribe();}catch{say('Se cerraron los avisos en este dispositivo.');}}active=false;controls();}
  };

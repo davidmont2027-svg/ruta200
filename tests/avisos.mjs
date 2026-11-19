@@ -10,7 +10,7 @@ async function client({permission='granted',supported=true,existing=false,active
  const navigator={serviceWorker:{register:async url=>{assert.equal(String(url),'https://example.test/ruta200/sw.js');return registration;},addEventListener:(n,fn)=>events[n]=fn}};
  const window=supported?{PushManager:function(){},Notification:{permission,requestPermission:async()=>permission}}:{};
  window.AudioContext=class {state='running';currentTime=0;destination={};async resume(){}async close(){}createOscillator(){return {frequency:{},connect(){},start(){tones++;},stop(at){stops.push(at);}};}createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(value){peaks.push(value);}},connect(){}};}};
- const context=vm.createContext({Set,document:{hidden:false,getElementById:id=>elements.get(id)},navigator,window,URL,Uint8Array,atob,Error,AbortSignal,setTimeout,clearTimeout,fetch:async(url,options)=>{
+ const context=vm.createContext({Set,document:{hidden:false,getElementById:id=>elements.get(id),addEventListener:(n,fn)=>events['document-'+n]=fn},navigator,window,URL,Uint8Array,atob,Error,AbortSignal,setTimeout,clearTimeout,fetch:async(url,options)=>{
   const body=JSON.parse(options.body);requests.push(body);assert.equal(options.headers.Authorization,'Bearer token-test-only');
   if(body.action==='config')return {ok:true,json:async()=>({publicKey:'A'.repeat(87),active})};
   return {ok:true,json:async()=>({ok:true})};
@@ -21,12 +21,12 @@ async function client({permission='granted',supported=true,existing=false,active
  return {controller,get:id=>elements.get(id),requests,events,unsubscribed:()=>unsubscribed,arrivals:()=>arrivals,subscribes:()=>subscribes,tones:()=>tones,stops,peaks};
 }
 let c=await client({supported:false});await c.controller.start();assert.match(c.get('estado-avisos').textContent,/no admite/);assert.equal(c.requests.length,0);
-c=await client();await c.controller.start();assert.equal(c.get('probar-avisos').disabled,true);await c.get('activar-avisos').onclick();assert.equal(c.subscribes(),1);assert.equal(c.get('probar-avisos').disabled,false);assert.ok(c.requests.some(r=>r.action==='subscribe'));
+c=await client();await c.controller.start();assert.equal(c.get('activar-avisos').hidden,true);await c.get('activar-avisos').onclick();assert.equal(c.subscribes(),1);assert.equal(c.get('probar-avisos').disabled,false);assert.ok(c.requests.some(r=>r.action==='subscribe'));
 await c.get('probar-avisos').onclick();assert.ok(c.requests.some(r=>r.action==='test'));assert.match(c.get('estado-avisos').textContent,/Prueba enviada/);
 c.events.message({data:{type:'r200-nueva-reserva'}});assert.equal(c.arrivals(),1);
 await c.controller.stop({unsubscribe:true});assert.equal(c.unsubscribed(),1);assert.ok(c.requests.some(r=>r.action==='unsubscribe'));c.events.message({data:{type:'r200-nueva-reserva'}});assert.equal(c.arrivals(),1);
 c=await client({permission:'denied'});await c.controller.start();await c.get('activar-avisos').onclick();assert.equal(c.subscribes(),0);assert.match(c.get('estado-avisos').textContent,/Permiso no concedido/);
-c=await client({existing:true,active:false});await c.controller.start();assert.equal(c.get('probar-avisos').disabled,true,'different-account subscription is not treated as active');
+c=await client({existing:true,active:false});await c.controller.start();assert.equal(c.get('probar-avisos').disabled,false);assert.ok(c.requests.some(r=>r.action==='subscribe'),'re-register existing subscription with current authenticated account');
 c=await client({existing:true,active:true});await c.controller.start();assert.equal(c.get('probar-avisos').disabled,false);
 c=await client({failSubscribe:true});await c.controller.start();await c.get('activar-avisos').onclick();assert.match(c.get('estado-avisos').textContent,/rechazada/);assert.equal(c.get('activar-avisos').disabled,false);
 const handlers={},shown=[],opened=[],posted=[];let focused=false,navigated='',closed=false;
@@ -46,3 +46,8 @@ c.controller.updateReservations([{id:1,estado:'confirmada'},{id:2,estado:'confir
 c.controller.updateReservations([{id:3,estado:'cancelada'}]);assert.equal(c.tones(),16);
 await c.controller.stop();c.controller.updateReservations([{id:4,estado:'confirmada'}]);assert.equal(c.tones(),16,'no sound after logout or maintenance');
 console.log('Sonido: activación por toque, nuevas reservas, sin repeticiones, cancelación y cierre verificados.');
+
+c=await client({existing:true});await c.controller.start();assert.equal(c.subscribes(),0);assert.equal(c.get('activar-avisos').hidden,true);
+c.controller.updateReservations([]);c.events['document-pointerdown']();await Promise.resolve();c.controller.updateReservations([{id:9,estado:'confirmada'}]);assert.equal(c.tones(),8,'normal app interaction enables reservation sound without activation button');
+c=await client({permission:'default'});await c.controller.start();assert.equal(c.requests.length,0);assert.equal(c.get('activar-avisos').hidden,false);
+console.log('Automático: recupera suscripción, oculta activación, sonido por toque normal y respeta permiso pendiente.');
