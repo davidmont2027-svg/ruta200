@@ -7,3 +7,12 @@ body[data-entry] .notice{background:#ece8da;color:#34452e;border-color:#9b782f}b
 .ajuste-asientos{grid-column:1 / -1}.salida-card .ajuste-asientos p{font-size:12px;color:#52633d}
 
 #estado-huella,#estado-activar-huella{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Confirmación de salida: contraste negro y dorado. */
+#publicar-listo{background:#11140f;border:1px solid #b99446;border-radius:24px;padding:24px;margin-top:20px;color:#f2d58a;}
+#publicar-listo .eyebrow{color:#d2b46f;}
+#publicar-listo h2{color:#f2d58a;font-style:italic;}
+#publicar-listo #publicar-resultado{color:#f6e5b8;font-style:italic;line-height:1.6;}
+#publicar-listo a{color:#f2d58a;text-decoration-color:#b99446;}
+#publicar-listo button{background:#f2d58a;color:#11140f;border-color:#f2d58a;}
+#publicar-listo button:hover{background:#ffe6a8;color:#11140f;}
