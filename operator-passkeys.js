@@ -7,7 +7,6 @@ export function passkeyError(error){
  if(name==='SecurityError'||/relying party|origin mismatch|invalid.*domain/i.test(text))return 'La comprobación del sitio falló. El detalle de abajo permite revisar la causa.';
  if(name==='NotAllowedError'||/cancel|not allowed|timed out|empty credential/i.test(text))return 'El celular no entregó una llave de acceso. Abre RUTA 200 en Chrome y elige la cuenta donde la guardaste. También puedes usar tu contraseña.';
  if(name==='AbortError')return 'La comprobación se interrumpió. Toca de nuevo para volver a intentarlo.';
- if(name==='InvalidStateError'||/already|duplicate|excluded/i.test(text))return 'Esta llave ya está registrada. Puedes probar «Entrar con huella / PIN».';
  if(/support|PublicKeyCredential/i.test(text))return 'Este navegador no admite llaves de acceso. Abre RUTA 200 en Chrome o usa tu contraseña.';
  const detail=String(code||name||'sin_codigo').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,64);
  return 'No se completó la comprobación con el celular. Puedes usar tu contraseña. Referencia: '+detail+'.';
