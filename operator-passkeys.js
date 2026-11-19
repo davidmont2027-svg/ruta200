@@ -58,11 +58,11 @@ export function setupOperatorPasskeys({getSession,onSession,canRegister,canStart
   const message=standard.includes(name)?String(cause?.message||error?.message||'').replace(/[A-Za-z0-9_-]{45,}/g,'[omitido]').slice(0,320):'';
   if(onDiagnostic)void Promise.resolve(onDiagnostic({p_etapa:stage,p_nombre:name,p_codigo:String(error?.code||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80),p_mensaje:message,p_sitio:String(globalThis.location?.hostname||'').slice(0,120),p_dominio:String(lastRP||'').replace(/[^a-zA-Z0-9.-]/g,'').slice(0,120)})).catch(()=>{});
  };
- function refresh(){for(const id of ['entrar-huella','activar-huella'])$(id).disabled=!active||working;$('entrar-huella').textContent=pending&&!pending.register?'Continuar con huella / PIN':'Entrar con huella / PIN';$('activar-huella').textContent=pending?.register?'Confirmar en este celular':'Activar en este celular';}
+ function refresh(){for(const id of ['entrar-huella','activar-huella'])$(id).disabled=!active||working;$('entrar-huella').textContent=pending&&!pending.register?'Continuar con huella / PIN':'Entrar con huella / PIN';$('activar-huella').textContent=pending?.register?'Confirmar huella':'Activar huella';}
  async function client(){const {createClient}=await import('./auth-assets/supabase-2.105.0.mjs');return createClient(API,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,experimental:{passkey:true}}});}
  async function check(){
   if(!supported){write('Usa Chrome en un celular compatible con bloqueo de pantalla, o entra con tu contraseña.');refresh();return;}
-  try{const response=await fetch(API+'/auth/v1/settings',{headers:{apikey:KEY},cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('settings');active=(await response.json()).passkeys_enabled===true;write(active?'Para la primera vez, entra con contraseña y activa tu llave en el panel.':'Acceso con huella pendiente de activación. Por ahora utiliza tu contraseña.');}catch{write('No se pudo comprobar el acceso con huella. Puedes usar tu contraseña.');}refresh();
+  try{const response=await fetch(API+'/auth/v1/settings',{headers:{apikey:KEY},cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('settings');active=(await response.json()).passkeys_enabled===true;write(active?'Para la primera vez, entra con contraseña y activa tu llave en el panel.':'Acceso con huella pendiente de activación. Por ahora utiliza tu contraseña.');}catch{write('No se pudo comprobar el acceso con huella. Puedes usar tu contraseña.');}if(active)$('estado-activar-huella').textContent='Opcional. Tu sesión ya se conserva en este celular.';refresh();
  }
  async function prepare(register){
   working=true;onBusy(true);refresh();write('Preparando comprobación segura…');
@@ -72,7 +72,7 @@ export function setupOperatorPasskeys({getSession,onSession,canRegister,canStart
    if(result.error)throw result.error;if(!result.data?.challenge_id||!result.data?.options)throw Error('Respuesta sin desafío');
    stage='leer opciones';lastRP=result.data.options.rp?.id||result.data.options.rpId||'';
    pending={register,sdk,id:result.data.challenge_id,options:credentialOptions(result.data.options,register),expires:Date.now()+120000};
-   write(register?'Ya está listo. Toca «Confirmar en este celular» para registrar tu llave.':'Ya está listo. Toca «Continuar con huella / PIN» para abrir la comprobación del celular.');
+   write(register?'Ya está listo. Toca «Confirmar huella» para registrar tu llave.':'Ya está listo. Toca «Continuar con huella / PIN» para abrir la comprobación del celular.');
   }catch(error){pending=null;report(error,stage);}finally{working=false;onBusy(false);refresh();}
  }
  // Esta función no espera red ni carga de módulos antes de invocar el selector del teléfono.
