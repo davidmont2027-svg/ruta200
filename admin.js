@@ -3,7 +3,7 @@ import {setupDriverNotifications} from './avisos.js?v=20261119-auto1';
 import {createCaptcha} from './captcha.js?v=20261119-wait1';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
-const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false;
+const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false,vistaTodos=false;
 try{session=JSON.parse(localStorage.getItem('r200-operador')||sessionStorage.getItem('r200-operador'));if(session){localStorage.setItem('r200-operador',JSON.stringify(session));sessionStorage.removeItem('r200-operador');}}catch{}
 let loginCaptcha;
 function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
@@ -48,11 +48,18 @@ async function load(){
 }
 function fechaVisible(fecha){const [y,m,d]=fecha.split('-');return d+'/'+m+'/'+y;}
 function horaVisible(hora){const [h,m]=hora.split(':');const n=Number(h);return (n%12||12)+(m==='00'?'':':'+m)+' '+(n<12?'a. m.':'p. m.');}
+function propios(){return data.mis_conductores||(!data.administrador?data.conductores.map(c=>c.id):[]);}
+function visible(h){return !data.administrador||vistaTodos||propios().includes(h.conductor_id);}
+$('vista-mis-viajes').onclick=()=>{vistaTodos=false;render();};
+$('vista-todos-carros').onclick=()=>{vistaTodos=true;render();};
 function render(){
- const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor))$('conductor').value=borrador.conductor;
+ $('vistas-administrador').hidden=!data.administrador;
+ $('vista-mis-viajes').disabled=!vistaTodos;$('vista-todos-carros').disabled=vistaTodos;
+ $('salidas-titulo').textContent=vistaTodos?'Salidas de todos los carros':'Mis salidas';
+ const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){if(data.administrador&&!vistaTodos&&!propios().includes(c.id))continue;const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=borrador.conductor;else if(propios().length)$('conductor').value=propios()[0];
  $('conductor').disabled=!data.administrador;
  renderFleet();const expanded=new Set([...document.querySelectorAll('.pasajeros-salida[open]')].map(el=>el.id));const hs=$('horarios');hs.replaceChildren();
- const ordenadas=[...data.horarios].sort((a,b)=>Number(b.activo)-Number(a.activo)||a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida));
+ const ordenadas=data.horarios.filter(visible).sort((a,b)=>Number(b.activo)-Number(a.activo)||a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida));
  for(const h of ordenadas){
   const a=document.createElement('article');a.className='salida-card';
   const info=document.createElement('div');info.className='salida-info';
@@ -66,7 +73,7 @@ function render(){
   const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
   hs.append(a);
- }if(!data.horarios.length)hs.textContent='No hay salidas asignadas.';
+ }if(!ordenadas.length)hs.textContent='No hay salidas asignadas.';
  actualizarFoto();renderReservations();renderPassengers();
 }
 function tripPassengerList(h){
@@ -102,12 +109,12 @@ function tripPassengerList(h){
  return details;
 }
 function renderFleet(){
- $('flota-panel').hidden=!data.administrador;const list=$('flota');list.replaceChildren();
+ $('flota-panel').hidden=!data.administrador||!vistaTodos;const list=$('flota');list.replaceChildren();
  for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v)continue;const card=document.createElement('article');const photo=fotosVehiculos[v.id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.style.cssText='width:100%;height:180px;object-fit:contain;border-radius:10px';card.append(img);}const name=document.createElement('strong');name.textContent=c.nombre;card.append(name,p(v.marca+' '+v.modelo+' · '+v.color));list.append(card);}
 }
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');
- for(const r of data.reservaciones){if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));
+ for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));
  if(r.estado==='confirmada')a.append(action('Registrar ausencia',async()=>{const reason=prompt('Motivo de la ausencia (solo después de la salida):');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:true,p_motivo:reason});}));
  if(data.administrador&&r.estado==='ausente')a.append(action('Corregir ausencia',async()=>{const reason=prompt('Explica por qué se corrige esta ausencia:');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:false,p_motivo:reason});}));list.append(a);
  }if(!list.children.length)list.textContent='No hay reservaciones que mostrar.';

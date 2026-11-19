@@ -34,7 +34,7 @@ const noTicket=await app('boleto.js','boleto.html',()=>{throw Error('No debería
 const view=await app('boleto.js','boleto.html',name=>ok(name==='r200_cancelar'?{...ticket,estado:'cancelada'}:ticket),{hash:'#'+'a'.repeat(64)});assert.equal(view.get('pasajero').textContent,ticket.pasajero);assert.equal(view.get('confirmacion').textContent,'🎟️ RESERVACIÓN CONFIRMADA');await view.get('cancelar').onclick();assert.equal(view.get('cancelar').hidden,true);assert.equal(view.get('confirmacion').textContent,'RESERVACIÓN CANCELADA');view.get('compartir').onclick();assert.match(decodeURIComponent(view.opened[0][0]),/Enlace privado: https:\/\/example.test\/ruta200\/boleto.html#/);
 console.log('Frontend verificado: sin horarios, vehículo con cupos suficientes, validación, doble toque, respuesta perdida, clave privada, boleto y cancelación.');
 
-const panel={administrador:true,conductores:[{id:1,nombre:'Blanca',vehiculo_id:1}],vehiculos:[{id:1,modelo:'MG5',color:'Blanco',activo:true}],horarios:[],reservaciones:[],pasajeros:[],historial:[]};
+const panel={administrador:true,mis_conductores:[1],conductores:[{id:1,nombre:'Blanca',vehiculo_id:1}],vehiculos:[{id:1,modelo:'MG5',color:'Blanco',activo:true}],horarios:[],reservaciones:[],pasajeros:[],historial:[]};
 const operator={access_token:'test-only',refresh_token:'test-only',expires_at:Date.now()+3600000};
 const op=await app('admin.js','admin.html',name=>ok(name==='r200_panel'?panel:{creadas:6,ya_publicadas:0}),{sessionData:operator});
 assert.equal(op.get('crear-panel').hidden,false);assert.equal(op.get('foto-vehiculo').src,'vehiculos/mg5-blanco.svg');
@@ -186,3 +186,10 @@ assert.equal(interrupted.local.has('r200-operador'),true);
 const revoked=await app('admin.js','admin.html',()=>({ok:false,status:401,json:async()=>({})}),{persistentOperator:expiredOperator});
 assert.equal(revoked.local.has('r200-operador'),false);assert.equal(revoked.get('login-panel').hidden,false);
 console.log('Sesión persistente: migración, reapertura, renovación, cierre, rechazo y pérdida temporal de red verificados.');
+
+const twoTrips={...driverPanel,administrador:true,mis_conductores:[1],conductores:[...panel.conductores,{id:2,nombre:'Otro',vehiculo_id:2}],vehiculos:[...panel.vehiculos,{id:2,modelo:'Otro carro',activo:true}],horarios:[...driverPanel.horarios,{...driverPanel.horarios[0],id:78,conductor_id:2,vehiculo_id:2}]};
+const split=await app('admin.js','admin.html',()=>ok(twoTrips),{sessionData:operator});
+assert.equal(split.get('horarios').children.length,1);assert.equal(split.get('conductor').children.length,1);assert.equal(split.get('flota-panel').hidden,true);
+split.get('vista-todos-carros').onclick();assert.equal(split.get('horarios').children.length,2);assert.equal(split.get('conductor').children.length,2);assert.equal(split.get('flota-panel').hidden,false);
+split.get('vista-mis-viajes').onclick();assert.equal(split.get('horarios').children.length,1);
+console.log('Administrador: mis viajes por identidad y flota completa en vistas separadas.');
