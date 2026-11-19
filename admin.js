@@ -1,4 +1,4 @@
-import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-1';
+import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-2';
 import {setupDriverNotifications} from './avisos.js?v=20261118-timbre3';
 import {createCaptcha} from './captcha.js';
 import {API,KEY,rpc,today,message} from './r200.js';

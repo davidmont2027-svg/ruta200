@@ -65,3 +65,7 @@ Configuración activada y verificada en el Dashboard de Supabase → Authenticat
 - Relying Party Origins: `https://davidmont2027-svg.github.io`.
 
 Conservar el RP ID una vez registradas las primeras llaves. Cada conductor debe entrar con su contraseña y pulsar «Activar en este celular» para registrar la llave en su cuenta. No se registran llaves por cuenta de otra persona. Se verificaron `passkeys_enabled: true` y el botón de acceso habilitado en la versión publicada. El registro y la prueba biométrica de cada conductor deben realizarse en su propio dispositivo. Si en el futuro se desactiva la función del servidor, la interfaz informa que está pendiente y no simula una activación.
+
+### Compatibilidad del selector de huella
+
+El flujo se dividió en dos toques: primero obtiene el desafío del servidor (y verifica Turnstile al iniciar sesión); después «Continuar con huella / PIN» o «Confirmar en este celular» invoca `navigator.credentials.get/create` de forma inmediata desde el toque, sin esperar red ni importar módulos antes de abrir el selector. La respuesta se valida en Supabase mediante `auth.passkey.verifyAuthentication/verifyRegistration`. Nunca se muestra éxito solo por cerrar el selector del teléfono. Se conservan mensajes específicos de CAPTCHA, cancelación, navegador, origen y registro duplicado. Verificado mediante pruebas de secuencia del toque y las pruebas existentes; falta confirmar en el teléfono del conductor que reportó el problema.
