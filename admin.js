@@ -56,6 +56,7 @@ function render(){
  $('vistas-administrador').hidden=!data.administrador;
  $('vista-mis-viajes').disabled=!vistaTodos;$('vista-todos-carros').disabled=vistaTodos;
  $('salidas-titulo').textContent=vistaTodos?'Salidas de todos los carros':'Mis salidas';
+ $('resumen-viajes').textContent=vistaTodos?'Ver todos los viajes':'Ver mis viajes';
  const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){if(data.administrador&&!vistaTodos&&!propios().includes(c.id))continue;const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=borrador.conductor;else if(propios().length)$('conductor').value=propios()[0];
  $('conductor').disabled=!data.administrador;
  renderFleet();const expanded=new Set([...document.querySelectorAll('.pasajeros-salida[open]')].map(el=>el.id));const hs=$('horarios');hs.replaceChildren();
@@ -130,7 +131,7 @@ $('login').onsubmit=async e=>{e.preventDefault();if($('entrar').disabled)return;
 $('logout').onclick=async()=>{await avisos.stop({unsubscribe:true});const old=session;saveSession(null);data=null;$('mantenimiento-panel').hidden=true;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
 $('reintentar-mantenimiento').onclick=load;$('salir-mantenimiento').onclick=()=>$('logout').onclick();
 $('actualizar-app').onclick=()=>{const url=new URL(location.href);url.searchParams.set('actualizar',String(Date.now()));location.replace(url.href);};
-$('refresh').onclick=load;$('buscar').oninput=renderReservations;$('buscar-pasajero').oninput=renderPassengers;
+$('refresh').onclick=load;$('buscar').oninput=()=>{$('lista-reservaciones').open=!!$('buscar').value.trim();renderReservations();};$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
 function actualizarFoto(){const c=data?.conductores.find(x=>x.id===Number($('conductor').value));const foto=fotosVehiculos[c?.vehiculo_id];const img=$('foto-vehiculo');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}}
@@ -222,3 +223,6 @@ const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(ses
 if(session)load();else security();
 
 setInterval(()=>{if(session&&data&&!busy&&!document.hidden)void load();},20000);
+
+for(const id of ['publicar-ver-salidas','navegar-salidas'])$(id).onclick=()=>{$('lista-viajes').open=true;};
+$('navegar-reservas').onclick=()=>{$('lista-reservaciones').open=true;};

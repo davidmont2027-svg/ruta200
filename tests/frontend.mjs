@@ -193,3 +193,6 @@ assert.equal(split.get('horarios').children.length,1);assert.equal(split.get('co
 split.get('vista-todos-carros').onclick();assert.equal(split.get('horarios').children.length,2);assert.equal(split.get('conductor').children.length,2);assert.equal(split.get('flota-panel').hidden,false);
 split.get('vista-mis-viajes').onclick();assert.equal(split.get('horarios').children.length,1);
 console.log('Administrador: mis viajes por identidad y flota completa en vistas separadas.');
+split.get('lista-viajes').open=false;split.get('navegar-salidas').onclick();assert.equal(split.get('lista-viajes').open,true);
+split.get('lista-reservaciones').open=false;split.get('buscar').value='David';split.get('buscar').oninput();assert.equal(split.get('lista-reservaciones').open,true);
+console.log('Listas plegables: navegación abre viajes y búsqueda muestra reservas automáticamente.');
