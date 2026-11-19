@@ -74,7 +74,7 @@ const driver=await app('admin.js','admin.html',name=>ok(name==='r200_panel'?driv
 assert.equal(driver.get('crear-panel').hidden,false);
 assert.equal(driver.get('conductor').disabled,true);
 assert.equal(driver.get('conductor').children.length,1);
-const tripText=driver.get('horarios').children[0].children[0].children.map(e=>e.textContent);
+const tripText=driver.get('horarios-proximos').children[0].children[0].children.map(e=>e.textContent);
 assert.deepEqual(tripText,['Blanca · MG5','Salida: 8 a. m.','20/01/2031','Mezcales → Tepic','Disponible para reservar']);
 driver.get('rol-fecha-1').value='2031-01-20';driver.get('rol-hora-1').value='08:00';
 driver.get('crear').onsubmit({preventDefault(){}});await flush();await flush();
@@ -101,7 +101,7 @@ const maintenance=await app('admin.js','admin.html',name=>name==='r200_panel'&&m
 assert.equal(maintenance.get('mantenimiento-panel').hidden,false);
 assert.equal(maintenance.get('panel').hidden,true);
 assert.equal(maintenance.get('login-panel').hidden,true);
-assert.equal(maintenance.get('horarios').children.length,0);
+assert.equal(maintenance.get('horarios-proximos').children.length,0);
 maintenanceOn=false;await maintenance.get('reintentar-mantenimiento').onclick();
 assert.equal(maintenance.get('mantenimiento-panel').hidden,true);assert.equal(maintenance.get('panel').hidden,false);
 maintenanceOn=true;await maintenance.get('refresh').onclick();
@@ -113,7 +113,7 @@ console.log('Mantenimiento individual: panel y datos ocultos; reintento, reactiv
 
 let resolveRoster;
 const roster=await app('admin.js','admin.html',name=>name==='r200_panel'?ok({...driverPanel,horarios:[{...driverPanel.horarios[0],cupos_ocupados:4}],reservaciones:[]}):new Promise(resolve=>resolveRoster=resolve),{sessionData:operator});
-const disclosure=roster.get('horarios').children[0].children.find(e=>e.tagName==='details');
+const disclosure=roster.get('horarios-proximos').children[0].children.find(e=>e.tagName==='details');
 assert.match(disclosure.children[0].textContent,/4\/4 asientos ocupados.*Ver pasajeros/);
 assert.equal(roster.calls.filter(c=>c.name==='r200_pasajeros_salida').length,0);
 disclosure.open=true;const opening=disclosure.ontoggle();await flush();await disclosure.ontoggle();
@@ -127,9 +127,9 @@ disclosure.open=false;await disclosure.ontoggle();disclosure.open=true;const reo
 disclosure.open=false;await disclosure.ontoggle();disclosure.open=true;const errorOpening=disclosure.ontoggle();await flush();resolveRoster({ok:false,json:async()=>({message:'Acceso no autorizado'})});await errorOpening;assert.match(manifest.children[0].textContent,/Acceso no autorizado/);
 console.log('Pasajeros por salida: apertura, consulta autenticada, doble toque, reconsulta, contactos seguros, lista vacía y error verificados.');
 
-const sameCard=driver.get('horarios').children[0],beforePoll=driver.calls.length;
+const sameCard=driver.get('horarios-proximos').children[0],beforePoll=driver.calls.length;
 const timer=driver.intervals.find(t=>t.ms===20000);assert.ok(timer);timer.fn();await flush();
-assert.equal(driver.calls.length,beforePoll+1);assert.equal(driver.get('horarios').children[0],sameCard,'unchanged automatic refresh keeps the open card intact');
+assert.equal(driver.calls.length,beforePoll+1);assert.equal(driver.get('horarios-proximos').children[0],sameCard,'unchanged automatic refresh keeps the open card intact');
 driver.get('actualizar-app').onclick();assert.match(driver.location.href,/actualizar=[0-9]+/);
 console.log('Panel: actualización cada 20 segundos sin reconstruir tarjetas intactas y recarga de app con URL nueva verificadas.');
 
@@ -169,7 +169,7 @@ publisher.get('publicar-encuentro').value='Astas Las Banderas';submitPublication
 assert.equal(publisher.get('publicar-paso-4').hidden,false);assert.equal(publisher.calls.some(c=>c.name==='r200_publicar_viaje'),false);
 submitPublication();await flush();await flush();
 assert.equal(publisher.get('publicar-listo').hidden,false);const posted=publisher.calls.find(c=>c.name==='r200_publicar_viaje');assert.equal(posted.body.p_conductor,1);assert.equal(posted.body.p_asientos,3);assert.equal(posted.body.p_encuentro,'Astas Las Banderas');assert.equal(posted.headers.Authorization,'Bearer '+operator.access_token);
-const adjust=publisher.get('horarios').children[0].children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
+const adjust=publisher.get('horarios-proximos').children[0].children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
 console.log('Publicación en cinco pasos y control − / + / Aceptar: validación, envío autenticado, punto de encuentro y protección ante datos obsoletos verificados.');
 
 assert.equal(JSON.parse(op.local.get('r200-operador')).access_token,operator.access_token);
@@ -189,10 +189,16 @@ console.log('Sesión persistente: migración, reapertura, renovación, cierre, r
 
 const twoTrips={...driverPanel,administrador:true,mis_conductores:[1],conductores:[...panel.conductores,{id:2,nombre:'Otro',vehiculo_id:2}],vehiculos:[...panel.vehiculos,{id:2,modelo:'Otro carro',activo:true}],horarios:[...driverPanel.horarios,{...driverPanel.horarios[0],id:78,conductor_id:2,vehiculo_id:2}]};
 const split=await app('admin.js','admin.html',()=>ok(twoTrips),{sessionData:operator});
-assert.equal(split.get('horarios').children.length,1);assert.equal(split.get('conductor').children.length,1);assert.equal(split.get('flota-panel').hidden,true);
-split.get('vista-todos-carros').onclick();assert.equal(split.get('horarios').children.length,2);assert.equal(split.get('conductor').children.length,2);assert.equal(split.get('flota-panel').hidden,false);
-split.get('vista-mis-viajes').onclick();assert.equal(split.get('horarios').children.length,1);
+assert.equal(split.get('horarios-proximos').children.length,1);assert.equal(split.get('conductor').children.length,1);assert.equal(split.get('flota-panel').hidden,true);
+split.get('vista-todos-carros').onclick();assert.equal(split.get('horarios-proximos').children.length,2);assert.equal(split.get('conductor').children.length,2);assert.equal(split.get('flota-panel').hidden,false);
+split.get('vista-mis-viajes').onclick();assert.equal(split.get('horarios-proximos').children.length,1);
 console.log('Administrador: mis viajes por identidad y flota completa en vistas separadas.');
 split.get('lista-viajes').open=false;split.get('navegar-salidas').onclick();assert.equal(split.get('lista-viajes').open,true);
 split.get('lista-reservaciones').open=false;split.get('buscar').value='David';split.get('buscar').oninput();assert.equal(split.get('lista-reservaciones').open,true);
 console.log('Listas plegables: navegación abre viajes y búsqueda muestra reservas automáticamente.');
+const localDay=origin=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:origin==='Tepic'?'America/Mazatlan':'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const part=t=>parts.find(p=>p.type===t).value;return part('year')+'-'+part('month')+'-'+part('day');};
+const groupedPanel={...driverPanel,horarios:[{...driverPanel.horarios[0],id:1,fecha:localDay('Mezcales'),hora_salida:'18:00:00'},{...driverPanel.horarios[0],id:2,fecha:localDay('Mezcales'),hora_salida:'05:00:00'},{...driverPanel.horarios[0],id:3,fecha:'2099-01-01'},{...driverPanel.horarios[0],id:4,fecha:'2000-01-01'}]};
+const grouped=await app('admin.js','admin.html',()=>ok(groupedPanel),{sessionData:operator});
+assert.equal(grouped.get('horarios').children.length,2);assert.equal(grouped.get('horarios-proximos').children.length,1);assert.equal(grouped.get('horarios-pasados').children.length,1);
+assert.equal(grouped.get('horarios').children[0].children[0].children[1].textContent,'Salida: 5 a. m.');
+console.log('Fechas: hoy en zona del origen, próximos y pasados separados; horarios del día ordenados.');

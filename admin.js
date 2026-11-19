@@ -3,7 +3,7 @@ import {setupDriverNotifications} from './avisos.js?v=20261119-auto1';
 import {createCaptcha} from './captcha.js?v=20261119-wait1';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
-const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false,vistaTodos=false;
+const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false,vistaTodos=false,fechaVista='';
 try{session=JSON.parse(localStorage.getItem('r200-operador')||sessionStorage.getItem('r200-operador'));if(session){localStorage.setItem('r200-operador',JSON.stringify(session));sessionStorage.removeItem('r200-operador');}}catch{}
 let loginCaptcha;
 function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
@@ -42,7 +42,7 @@ function showMaintenance(error){
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
  if(loading)return;loading=true;
- try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data);data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();enviarDiagnosticoGuardado();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data)||fechaVista!==today('Tepic')+today('Mezcales');data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();enviarDiagnosticoGuardado();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
  catch(e){if(showMaintenance(e))return;if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
  finally{loading=false;}
 }
@@ -52,15 +52,17 @@ function propios(){return data.mis_conductores||(!data.administrador?data.conduc
 function visible(h){return !data.administrador||vistaTodos||propios().includes(h.conductor_id);}
 $('vista-mis-viajes').onclick=()=>{vistaTodos=false;render();};
 $('vista-todos-carros').onclick=()=>{vistaTodos=true;render();};
+function grupoViaje(h){const hoy=today(h.origen);return h.fecha<hoy?'pasados':h.fecha>hoy?'proximos':'hoy';}
 function render(){
+ fechaVista=today('Tepic')+today('Mezcales');
  $('vistas-administrador').hidden=!data.administrador;
  $('vista-mis-viajes').disabled=!vistaTodos;$('vista-todos-carros').disabled=vistaTodos;
  $('salidas-titulo').textContent=vistaTodos?'Salidas de todos los carros':'Mis salidas';
- $('resumen-viajes').textContent=vistaTodos?'Ver todos los viajes':'Ver mis viajes';
+ $('resumen-viajes').textContent=vistaTodos?'Ver viajes de hoy · Todos los carros':'Ver mis viajes de hoy';
  const selected=$('conductor').value;$('conductor').replaceChildren();for(const c of data.conductores){if(data.administrador&&!vistaTodos&&!propios().includes(c.id))continue;const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v?.activo)continue;const o=document.createElement('option');o.value=c.id;o.textContent=c.nombre+' · '+v.modelo+' '+v.color;$('conductor').append(o);}if(selected&&data.conductores.some(c=>String(c.id)===selected&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=selected;else if(borrador?.conductor&&data.conductores.some(c=>String(c.id)===borrador.conductor&&(vistaTodos||!data.administrador||propios().includes(c.id))))$('conductor').value=borrador.conductor;else if(propios().length)$('conductor').value=propios()[0];
  $('conductor').disabled=!data.administrador;
- renderFleet();const expanded=new Set([...document.querySelectorAll('.pasajeros-salida[open]')].map(el=>el.id));const hs=$('horarios');hs.replaceChildren();
- const ordenadas=data.horarios.filter(visible).sort((a,b)=>Number(b.activo)-Number(a.activo)||a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida));
+ renderFleet();const expanded=new Set([...document.querySelectorAll('.pasajeros-salida[open]')].map(el=>el.id));const listas={hoy:$('horarios'),proximos:$('horarios-proximos'),pasados:$('horarios-pasados')};for(const lista of Object.values(listas))lista.replaceChildren();
+ const ordenadas=data.horarios.filter(visible).sort((a,b)=>(grupoViaje(a)==='pasados'&&grupoViaje(b)==='pasados'?-1:1)*(a.fecha.localeCompare(b.fecha)||a.hora_salida.localeCompare(b.hora_salida)));
  for(const h of ordenadas){
   const a=document.createElement('article');a.className='salida-card';
   const info=document.createElement('div');info.className='salida-info';
@@ -73,8 +75,8 @@ function render(){
   if(h.activo&&h.fecha>=today(h.origen))a.append(ajusteAsientos(h));
   const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
-  hs.append(a);
- }if(!ordenadas.length)hs.textContent='No hay salidas asignadas.';
+  listas[grupoViaje(h)].append(a);
+ }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
  actualizarFoto();renderReservations();renderPassengers();
 }
 function tripPassengerList(h){
@@ -224,5 +226,6 @@ if(session)load();else security();
 
 setInterval(()=>{if(session&&data&&!busy&&!document.hidden)void load();},20000);
 
-for(const id of ['publicar-ver-salidas','navegar-salidas'])$(id).onclick=()=>{$('lista-viajes').open=true;};
+$('navegar-salidas').onclick=()=>{$('lista-viajes').open=true;};
+$('publicar-ver-salidas').onclick=()=>{$('lista-viajes').open=true;$('lista-proximos').open=true;};
 $('navegar-reservas').onclick=()=>{$('lista-reservaciones').open=true;};
