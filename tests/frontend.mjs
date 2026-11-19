@@ -11,11 +11,11 @@ class Element{
  querySelectorAll(selector){const tags=selector.split(',');return this.children.flatMap(e=>[...(tags.includes(e.tagName)?[e]:[]),...e.querySelectorAll(selector)]);}
  setCustomValidity(s){this.validityMessage=s;}reportValidity(){return !this.validityMessage;}
 }
-async function app(file,html,respond,{hash='',sessionData=null,passengerData={access_token:'passenger-test',refresh_token:'refresh-test',phone:'523111234567',expires_at:Date.now()+3600000},captchaToken='captcha-test-only',presenceData={verified:true}}={}){
+async function app(file,html,respond,{hash='',sessionData=null,persistentOperator=null,passengerData={access_token:'passenger-test',refresh_token:'refresh-test',phone:'523111234567',expires_at:Date.now()+3600000},captchaToken='captcha-test-only',presenceData={verified:true}}={}){
  const elements=new Map();const source=fs.readFileSync(new URL(html,root),'utf8');
  for(const m of source.matchAll(/<[^>]*\bid="([^"]+)"[^>]*>/g)){const el=new Element(m[0].match(/^<(\w+)/)[1]);el.hidden=/\bhidden\b/.test(m[0]);elements.set(m[1],el);}
  const dynamic=[];const get=id=>{const found=elements.get(id)||dynamic.find(e=>e.id===id);if(!found)throw Error('ID ausente: '+id);return found;};
- const local=new Map();if(passengerData)local.set('r200-pasajero-sesion',JSON.stringify(passengerData));const session=new Map(),calls=[],opened=[];const storage=s=>({getItem:k=>s.get(k)??null,setItem:(k,v)=>s.set(k,v),removeItem:k=>s.delete(k)});
+ const local=new Map();if(persistentOperator)local.set('r200-operador',JSON.stringify(persistentOperator));if(passengerData)local.set('r200-pasajero-sesion',JSON.stringify(passengerData));const session=new Map(),calls=[],opened=[];const storage=s=>({getItem:k=>s.get(k)??null,setItem:(k,v)=>s.set(k,v),removeItem:k=>s.delete(k)});
  const location={href:'https://example.test/ruta200/'+html,hash,replace(path){this.href=new URL(path,this.href).href;}};if(sessionData)session.set('r200-operador',JSON.stringify(sessionData));
  const intervals=[];const context=vm.createContext({Intl,Date,URL,Uint8Array,crypto:webcrypto,AbortSignal,JSON,Number,String,Array,Map,Math,Error,document:{hidden:false,getElementById:get,createElement:tag=>{const e=new Element(tag);dynamic.push(e);return e;},querySelectorAll:()=>[]},location,localStorage:storage(local),sessionStorage:storage(session),setInterval:(fn,ms)=>{intervals.push({fn,ms});return intervals.length;},confirm:()=>true,prompt:()=>null,window:{scrollTo(){},open:(...args)=>opened.push(args)},fetch:async(url,opts)=>{const name=url.split('/').pop(),body=JSON.parse(opts.body||'{}');calls.push({name,body,headers:opts.headers});if(name==='ruta200-liveness')return {ok:true,json:async()=>presenceData};return respond(name,body,opts);}});
  const modules=new Map();async function load(name){if(modules.has(name))return modules.get(name);if(name==='sms-ui-test-entry.js'){const mod=new vm.SourceTextModule("import {setupSms} from './sms-ui.js';setupSms()();",{context});modules.set(name,mod);return mod;}if(name==='captcha.js'){const mod=new vm.SyntheticModule(['createCaptcha'],function(){this.setExport('createCaptcha',()=>({ready:Promise.resolve(),token:async()=>{if(!captchaToken)throw Error('Completa seguridad');return captchaToken;},reset:async()=>{}}));},{context});modules.set(name,mod);return mod;}const mod=new vm.SourceTextModule(fs.readFileSync(new URL(name,root),'utf8'),{context,identifier:name});modules.set(name,mod);return mod;}
@@ -171,3 +171,18 @@ submitPublication();await flush();await flush();
 assert.equal(publisher.get('publicar-listo').hidden,false);const posted=publisher.calls.find(c=>c.name==='r200_publicar_viaje');assert.equal(posted.body.p_conductor,1);assert.equal(posted.body.p_asientos,3);assert.equal(posted.body.p_encuentro,'Astas Las Banderas');assert.equal(posted.headers.Authorization,'Bearer '+operator.access_token);
 const adjust=publisher.get('horarios').children[0].children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
 console.log('Publicación en cinco pasos y control − / + / Aceptar: validación, envío autenticado, punto de encuentro y protección ante datos obsoletos verificados.');
+
+assert.equal(JSON.parse(op.local.get('r200-operador')).access_token,operator.access_token);
+const reopened=await app('admin.js','admin.html',name=>ok(panel),{persistentOperator:operator});
+assert.equal(reopened.get('panel').hidden,false);
+assert.equal(reopened.calls.some(c=>c.name==='token?grant_type=password'),false);
+const expiredOperator={...operator,expires_at:0};
+const renewed=await app('admin.js','admin.html',name=>ok(name==='token?grant_type=refresh_token'?{access_token:'renewed-access',refresh_token:'renewed-refresh',expires_in:3600}:panel),{persistentOperator:expiredOperator});
+assert.equal(renewed.get('panel').hidden,false);
+assert.equal(JSON.parse(renewed.local.get('r200-operador')).refresh_token,'renewed-refresh');
+await renewed.get('logout').onclick();assert.equal(renewed.local.has('r200-operador'),false);
+const interrupted=await app('admin.js','admin.html',()=>{throw Error('Sin red');},{persistentOperator:expiredOperator});
+assert.equal(interrupted.local.has('r200-operador'),true);
+const revoked=await app('admin.js','admin.html',()=>({ok:false,status:401,json:async()=>({})}),{persistentOperator:expiredOperator});
+assert.equal(revoked.local.has('r200-operador'),false);assert.equal(revoked.get('login-panel').hidden,false);
+console.log('Sesión persistente: migración, reapertura, renovación, cierre, rechazo y pérdida temporal de red verificados.');

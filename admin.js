@@ -4,17 +4,26 @@ import {createCaptcha} from './captcha.js?v=20261119-wait1';
 import {API,KEY,rpc,today,message} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false;
-try{session=JSON.parse(sessionStorage.getItem('r200-operador'));}catch{}
+try{session=JSON.parse(localStorage.getItem('r200-operador')||sessionStorage.getItem('r200-operador'));if(session){localStorage.setItem('r200-operador',JSON.stringify(session));sessionStorage.removeItem('r200-operador');}}catch{}
 let loginCaptcha;
 function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
 $('reintentar-captcha-operador').onclick=()=>security().reset().catch(e=>message($('status'),e.message,true));
 
-function saveSession(s){session=s;try{s?sessionStorage.setItem('r200-operador',JSON.stringify(s)):sessionStorage.removeItem('r200-operador');}catch{}}
+function saveSession(s){session=s;try{s?localStorage.setItem('r200-operador',JSON.stringify(s)):localStorage.removeItem('r200-operador');sessionStorage.removeItem('r200-operador');}catch{}}
+let refreshing=null;
 async function access(){
  if(!session)throw new Error('Inicia sesión para continuar.');
  if(session.expires_at>Date.now()+60000)return session.access_token;
- const res=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})});
- const s=await res.json();if(!res.ok){saveSession(null);throw new Error('La sesión venció. Vuelve a entrar.');}saveSession({...s,expires_at:Date.now()+s.expires_in*1000});return s.access_token;
+ if(refreshing)return refreshing;
+ const original=session;
+ refreshing=(async()=>{
+  const res=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:original.refresh_token})});
+  const s=await res.json();
+  if(session!==original)throw new Error('La sesión cambió. Vuelve a abrir tu panel.');
+  if(!res.ok){if(res.status===400||res.status===401||res.status===403){saveSession(null);throw new Error('La sesión venció. Vuelve a entrar.');}throw new Error('No se pudo renovar la sesión. Revisa tu conexión e intenta de nuevo.');}
+  saveSession({...s,expires_at:Date.now()+s.expires_in*1000});return s.access_token;
+ })();
+ try{return await refreshing;}finally{refreshing=null;}
 }
 const call=async(name,body)=>rpc(name,body,await access());
 async function diagnosticoHuella(detalle){
