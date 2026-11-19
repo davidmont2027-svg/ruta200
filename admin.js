@@ -1,3 +1,4 @@
+import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-1';
 import {setupDriverNotifications} from './avisos.js?v=20261118-timbre3';
 import {createCaptcha} from './captcha.js';
 import {API,KEY,rpc,today,message} from './r200.js';
@@ -195,6 +196,7 @@ function ajusteAsientos(h){
  counter.append(minus,output,plus);wrap.append(heading,counter,save,status,p('Las reservas confirmadas se conservan.'));update();return wrap;
 }
 
+const huella=setupOperatorPasskeys({getSession:async()=>{await access();return session;},canRegister:()=>!!(session&&data&&!busy),canStart:()=>!busy&&!$('entrar').disabled,getCaptcha:()=>security().token(),onSession:async s=>{saveSession(s);await load();},onBusy:value=>{busy=value;$('entrar').disabled=value;if(!value)security().reset().catch(()=>{});}});
 const avisos=setupDriverNotifications({getToken:access,onReservation:()=>{if(session&&!busy)void load();}});
 if(session)load();else security();
 

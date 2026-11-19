@@ -1,0 +1,8 @@
+{
+  "package": "@supabase/supabase-js",
+  "version": "2.105.0",
+  "tarball": "https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.105.0.tgz",
+  "integrity": "sha512-UUmh6KpStf2RdKpRUmzj0cPl6OXlo1hkRTNHdFHozbiJv2MIxR/7eWGKHAO8OgnaZt0gv52k7NL/bZXgPQbw/A==",
+  "vendor_sha256": "24e8c00dc25da420ee741068b60bcdb5f62cb3598d8834058acf37ec6ee1a724",
+  "modification": "Append named createClient ESM export to official UMD bundle."
+}

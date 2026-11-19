@@ -50,3 +50,18 @@ Cada salida futura abierta permite ajustar lugares disponibles con − / + / Ace
 El punto de encuentro se guarda en la salida, se muestra en los carros del horario y aparece en el boleto y su mensaje de WhatsApp. No usa Google Places ni autocompletado de pago.
 
 SQL aplicado mediante `apply_migration`, nombre `publicacion_y_asientos`, conservado en `supabase/publicacion_y_asientos.sql`. Verificación con `node --experimental-vm-modules tests/frontend.mjs`, `node tests/reserva-pasos.mjs` y `tests/publicacion-asientos.sql` ejecutado con BEGIN/ROLLBACK; las pruebas no conservaron datos ficticios. Las funciones nuevas requieren sesión, respetan mantenimiento individual y autorizan únicamente al dueño de la salida o al administrador.
+
+## Llaves de acceso para operadores
+
+El acceso con correo/contraseña conserva su funcionamiento. `operator-passkeys.js` consulta `/auth/v1/settings` y solo habilita los botones cuando `passkeys_enabled` es verdadero y el navegador admite WebAuthn en contexto seguro. El login con llave conserva Turnstile y entrega la sesión verificada al mismo control de permisos `r200_panel`. El registro está dentro del panel de una cuenta autorizada; el teléfono realiza la confirmación mediante su bloqueo de pantalla. El SDK usa almacenamiento de memoria y no comparte el almacenamiento de pasajeros.
+
+Dependencia local fijada: `@supabase/supabase-js` 2.105.0; bundle oficial npm con integridad verificada, licencia y procedencia en `auth-assets/`. Se añadió un export ESM para `createClient`. Las llaves son una función experimental del proveedor; la contraseña se mantiene disponible. Pruebas: `node --experimental-vm-modules tests/operator-passkeys.mjs` y `tests/frontend.mjs`.
+
+Pendiente de activación en el Dashboard de Supabase → Authentication → Passkeys:
+
+- Enable Passkey authentication: activado.
+- Relying Party Display Name: `RUTA 200`.
+- Relying Party ID: `davidmont2027-svg.github.io`.
+- Relying Party Origins: `https://davidmont2027-svg.github.io`.
+
+Conservar el RP ID una vez registradas las primeras llaves. Cada conductor debe entrar con su contraseña y pulsar «Activar en este celular» para registrar la llave en su cuenta. No se registran llaves por cuenta de otra persona. Mientras el servidor no esté habilitado, la interfaz informa que está pendiente y no simula una activación.
