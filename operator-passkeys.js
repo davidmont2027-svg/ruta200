@@ -4,6 +4,7 @@ export function passkeyError(error){
  const cause=error?.cause||error;const code=error?.code||'',name=cause?.name||error?.name||'',text=error?.message||'';
  if(code==='passkey_disabled'||/passkeys?.*(disabled|not enabled)/i.test(text))return 'La huella aún está pendiente de activación. Puedes entrar con tu contraseña.';
  if(/captcha|comprobación|seguridad/i.test(text))return 'Completa o repite la comprobación de seguridad y vuelve a tocar el botón de huella.';
+ if(name==='InvalidStateError'||/already|duplicate|excluded|credentials already registered/i.test(text))return 'La llave ya está registrada en este celular. No necesitas activarla otra vez: cierra sesión y usa «Entrar con huella / PIN» y después «Continuar con huella / PIN».';
  if(name==='SecurityError'||/relying party|origin mismatch|invalid.*domain/i.test(text))return 'La comprobación del sitio falló. El detalle de abajo permite revisar la causa.';
  if(name==='NotAllowedError'||/cancel|not allowed|timed out|empty credential/i.test(text))return 'El celular no entregó una llave de acceso. Abre RUTA 200 en Chrome y elige la cuenta donde la guardaste. También puedes usar tu contraseña.';
  if(name==='AbortError')return 'La comprobación se interrumpió. Toca de nuevo para volver a intentarlo.';
