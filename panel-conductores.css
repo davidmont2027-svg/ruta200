@@ -30,3 +30,11 @@ body{background:#f7f5ef;color:#19281f}.operation-header .header-copy{display:non
 .administrar-viaje .seat-counter button{width:48px;height:48px;min-height:48px;}
 .administrar-viaje .ajuste-asientos>button{min-height:48px;padding:10px 16px;}
 .administrar-viaje .ajuste-asientos p{color:#52633d!important;}
+
+/* Accesos de contacto legibles y cómodos para tocar. */
+.contacto-viajero{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 4px;}
+.contacto-viajero a{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 14px;border:1px solid #bfcdb9;border-radius:12px;font-size:.9rem;font-weight:700;text-decoration:none;}
+.contacto-viajero a.contacto-whatsapp{background:#e2f3e7;color:#146335;border-color:#a9d7b6;}
+.contacto-viajero a.contacto-llamar{background:#e9eee5;color:#294432;}
+.contacto-viajero a img{display:block;width:22px;height:22px;background:none;border-radius:0;object-fit:contain;}
+.contacto-viajero a:focus-visible{outline:3px solid #92702e;outline-offset:3px;}

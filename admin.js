@@ -102,13 +102,7 @@ function tripPassengerList(h){
     row.append(name,p(person.asientos+(Number(person.asientos)===1?' asiento':' asientos')+' · '+(person.estado==='ausente'?'Ausencia registrada':'Reservación confirmada')));
     const phone=String(person.telefono||'').replace(/\D/g,'');
     row.append(p('Teléfono: '+(phone||'No disponible')));
-    const international=phone.length===10?'52'+phone:phone;
-    if(/^52[0-9]{10}$/.test(international)){
-     const links=document.createElement('div');links.className='contacto-viajero';
-     const callLink=document.createElement('a');callLink.href='tel:+'+international;callLink.textContent='Llamar';
-     const whatsapp=document.createElement('a');whatsapp.href='https://wa.me/'+international;whatsapp.textContent='WhatsApp';whatsapp.target='_blank';whatsapp.rel='noopener noreferrer';
-     links.append(callLink,whatsapp);row.append(links);
-    }
+    const contacts=contactosPasajero(phone,person.nombre);if(contacts)row.append(contacts);
     list.append(row);
    }
   }catch(e){if(!showMaintenance(e))list.replaceChildren(p(e.message+' Cierra y vuelve a abrir para reintentar.'));}
@@ -116,13 +110,25 @@ function tripPassengerList(h){
  };
  return details;
 }
+function contactosPasajero(phone,name='pasajero'){
+ const digits=String(phone||'').replace(/\D/g,''),international=digits.length===10?'52'+digits:digits;
+ if(!/^52[0-9]{10}$/.test(international))return null;
+ const links=document.createElement('div');links.className='contacto-viajero';
+ for(const [label,href,icon] of [['Llamar','tel:+'+international,'contacto-llamar.svg'],['WhatsApp','https://wa.me/'+international,'contacto-whatsapp.svg']]){
+  const link=document.createElement('a');link.href=href;link.className=label==='WhatsApp'?'contacto-whatsapp':'contacto-llamar';link.ariaLabel=label+' a '+name;link.title=label+' a '+name;
+  const image=document.createElement('img');image.src='icons/'+icon;image.alt='';image.width=22;image.height=22;const text=document.createElement('span');text.textContent=label;link.append(image,text);
+  if(label==='WhatsApp'){link.target='_blank';link.rel='noopener noreferrer';}
+  links.append(link);
+ }
+ return links;
+}
 function renderFleet(){
  $('flota-panel').hidden=!data.administrador||!vistaTodos;const list=$('flota');list.replaceChildren();
  for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v)continue;const card=document.createElement('article');const photo=fotosVehiculos[v.id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.style.cssText='width:100%;height:180px;object-fit:contain;border-radius:10px';card.append(img);}const name=document.createElement('strong');name.textContent=c.nombre;card.append(name,p(v.marca+' '+v.modelo+' · '+v.color));list.append(card);}
 }
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');
- for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));
+ for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));const contacts=contactosPasajero(r.telefono_pasajero,r.nombre_pasajero);if(contacts)a.append(contacts);
  if(r.estado==='confirmada')a.append(action('Registrar ausencia',async()=>{const reason=prompt('Motivo de la ausencia (solo después de la salida):');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:true,p_motivo:reason});}));
  if(data.administrador&&r.estado==='ausente')a.append(action('Corregir ausencia',async()=>{const reason=prompt('Explica por qué se corrige esta ausencia:');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:false,p_motivo:reason});}));list.append(a);
  }if(!list.children.length)list.textContent='No hay reservaciones que mostrar.';
