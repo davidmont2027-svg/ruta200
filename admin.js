@@ -1,9 +1,10 @@
 import {setupOperatorPasskeys} from './operator-passkeys.js?v=20261119-compacta1';
 import {setupDriverNotifications} from './avisos.js?v=20261119-auto1';
 import {createCaptcha} from './captcha.js?v=20261119-wait1';
-import {API,KEY,rpc,today,message} from './r200.js';
+import {API,KEY,rpc,today,message as baseMessage} from './r200.js';
 import {fotosVehiculos} from './vehiculos.js';
 const $=id=>document.getElementById(id);let session=null,data=null,busy=false,loading=false,vistaTodos=false,fechaVista='';
+function message(el,text,error=false){baseMessage(el,text,error);if(el===$('status'))el.style.color=error?'#8c3024':'#294a35';}
 try{session=JSON.parse(localStorage.getItem('r200-operador')||sessionStorage.getItem('r200-operador'));if(session){localStorage.setItem('r200-operador',JSON.stringify(session));sessionStorage.removeItem('r200-operador');}}catch{}
 let loginCaptcha;
 function security(){if(!loginCaptcha){loginCaptcha=createCaptcha('captcha-operador');loginCaptcha.ready.catch(e=>message($('status'),e.message,true));}return loginCaptcha;}
