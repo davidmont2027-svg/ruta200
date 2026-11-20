@@ -166,6 +166,11 @@ assert.equal(publisher.get('publicar-paso-1').hidden,false);publisher.get('publi
 assert.equal(publisher.get('publicar-paso-2').hidden,false);submitPublication();assert.match(publisher.get('publicar-error').textContent,/hora/);
 publisher.get('publicar-hora').value='06:30';submitPublication();submitPublication();assert.match(publisher.get('publicar-error').textContent,/encuentro/);
 publisher.get('publicar-encuentro').value='Astas Las Banderas';submitPublication();
+assert.deepEqual(JSON.parse(publisher.local.get('r200-encuentros:1:Tepic')),['Astas Las Banderas']);
+publisher.get('publicar-origen').value='Mezcales';publisher.get('publicar-origen').onchange();assert.equal(publisher.get('encuentros-recientes').hidden,true);
+publisher.get('publicar-origen').value='Tepic';publisher.get('publicar-origen').onchange();assert.equal(publisher.get('encuentros-recientes').hidden,false);
+publisher.get('publicar-encuentro').value='';publisher.get('elegir-encuentro').value='Astas Las Banderas';publisher.get('elegir-encuentro').onchange();assert.equal(publisher.get('publicar-encuentro').value,'Astas Las Banderas');
+
 assert.equal(publisher.get('publicar-paso-4').hidden,false);assert.equal(publisher.calls.some(c=>c.name==='r200_publicar_viaje'),false);
 submitPublication();await flush();await flush();
 assert.equal(publisher.get('publicar-listo').hidden,false);const posted=publisher.calls.find(c=>c.name==='r200_publicar_viaje');assert.equal(posted.body.p_conductor,1);assert.equal(posted.body.p_asientos,3);assert.equal(posted.body.p_encuentro,'Astas Las Banderas');assert.equal(posted.headers.Authorization,'Bearer '+operator.access_token);

@@ -84,7 +84,7 @@ function render(){
   a.append(administrar);
   listas[grupoViaje(h)].append(a);
  }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
- renderReservations();renderPassengers();renderJornada();
+ mostrarEncuentros();renderReservations();renderPassengers();renderJornada();
 }
 function tripPassengerList(h){
  const details=document.createElement('details');details.className='pasajeros-salida';details.id='pasajeros-salida-'+h.id;
@@ -165,7 +165,7 @@ $('actualizar-app').onclick=()=>{const url=new URL(location.href);url.searchPara
 $('refresh').onclick=load;$('buscar').oninput=()=>{$('lista-reservaciones').open=!!$('buscar').value.trim();renderReservations();};$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
-$('conductor').onchange=()=>{guardarRol();};
+$('conductor').onchange=()=>{guardarRol();mostrarEncuentros();};
 function nuevaFila(valores={}){
  const id=++filaId,wrap=document.createElement('article'),grid=document.createElement('div');grid.className='grid';
  const fila={wrap};for(const [campo,titulo] of [['origen','Origen'],['fecha','Fecha'],['hora','Hora de salida']]){
@@ -196,7 +196,17 @@ let publicarPaso=0,publicarAsientos=4;
 try{const draft=JSON.parse(sessionStorage.getItem('r200-publicar-borrador'));if(draft){$('publicar-origen').value=draft.origen==='Mezcales'?'Mezcales':'Tepic';$('publicar-fecha').value=draft.fecha||'';$('publicar-hora').value=draft.hora||'';$('publicar-encuentro').value=String(draft.encuentro||'').slice(0,160);publicarAsientos=Number.isInteger(draft.asientos)&&draft.asientos>=1&&draft.asientos<=4?draft.asientos:4;}}catch{}
 if(!$('publicar-fecha').value)$('publicar-fecha').value=today($('publicar-origen').value);
 function guardarPublicacion(){try{sessionStorage.setItem('r200-publicar-borrador',JSON.stringify({origen:$('publicar-origen').value,fecha:$('publicar-fecha').value,hora:$('publicar-hora').value,encuentro:$('publicar-encuentro').value,asientos:publicarAsientos}));}catch{}}
+function claveEncuentros(){return 'r200-encuentros:'+Number($('conductor').value)+':'+$('publicar-origen').value;}
+function puntosGuardados(){try{const a=JSON.parse(localStorage.getItem(claveEncuentros())||'[]');return Array.isArray(a)?a.filter(x=>typeof x==='string'&&x.trim().length>=3&&x.length<=160).slice(0,12):[];}catch{return [];}}
+function guardarEncuentro(){const punto=$('publicar-encuentro').value.trim();if(punto.length<3||punto.length>160)return;const puntos=[punto,...puntosGuardados()].filter((x,i,a)=>a.findIndex(y=>y.toLocaleLowerCase()===x.toLocaleLowerCase())===i).slice(0,12);try{localStorage.setItem(claveEncuentros(),JSON.stringify(puntos));}catch{}mostrarEncuentros();}
+function mostrarEncuentros(){
+ const puntos=[...puntosGuardados(),...(data?.horarios||[]).filter(h=>h.conductor_id===Number($('conductor').value)&&h.origen===$('publicar-origen').value).map(h=>h.punto_encuentro)].filter(x=>typeof x==='string'&&x.trim().length>=3&&x.length<=160).map(x=>x.trim()).filter((x,i,a)=>a.findIndex(y=>y.toLocaleLowerCase()===x.toLocaleLowerCase())===i).slice(0,12);
+ const select=$('elegir-encuentro'),placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Seleccionar punto…';select.replaceChildren(placeholder);
+ for(const punto of puntos){const option=document.createElement('option');option.value=punto;option.textContent=punto;select.append(option);}select.value='';$('encuentros-recientes').hidden=!puntos.length;
+}
+$('elegir-encuentro').onchange=()=>{if(!$('elegir-encuentro').value)return;$('publicar-encuentro').value=$('elegir-encuentro').value;guardarPublicacion();message($('publicar-error'),'');};
 function mostrarPublicacion(){
+ mostrarEncuentros();
  for(let i=0;i<5;i++)$('publicar-paso-'+i).hidden=i!==publicarPaso;
  const labels=['Tu recorrido','Tus asientos','Hora de salida','Punto de encuentro','Revisa tu salida'];
  $('publicar-progreso').textContent='Paso '+(publicarPaso+1)+' de 5 · '+labels[publicarPaso];
@@ -222,6 +232,7 @@ $('publicar-form').onsubmit=e=>{e.preventDefault();if(busy)return;
  if(publicarPaso===2&&!/^\d{2}:\d{2}$/.test(hora))error='Elige la hora de salida.';
  if(publicarPaso===3&&(encuentro.length<3||encuentro.length>160))error='Escribe el punto de encuentro (3 a 160 caracteres).';
  message($('publicar-error'),error,!!error);if(error)return;
+ if(publicarPaso===3)guardarEncuentro();
  if(publicarPaso<4){publicarPaso++;mostrarPublicacion();return;}
  const conductor=Number($('conductor').value);if(!data?.conductores.some(c=>c.id===conductor)){message($('publicar-error'),'Selecciona tu conductor y vehículo.',true);return;}
  const body={p_conductor:conductor,p_fecha:fecha,p_hora:hora,p_origen:origen,p_asientos:publicarAsientos,p_encuentro:encuentro};
