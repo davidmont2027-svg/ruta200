@@ -202,3 +202,18 @@ const grouped=await app('admin.js','admin.html',()=>ok(groupedPanel),{sessionDat
 assert.equal(grouped.get('horarios').children.length,2);assert.equal(grouped.get('horarios-proximos').children.length,1);assert.equal(grouped.get('horarios-pasados').children.length,1);
 assert.equal(grouped.get('horarios').children[0].children[0].children[1].textContent,'Salida: 5 a. m.');
 console.log('Fechas: hoy en zona del origen, próximos y pasados separados; horarios del día ordenados.');
+// El nuevo inicio usa datos reales y abre los formularios existentes.
+assert.equal(grouped.get('jornada-viajes').textContent,'2');
+assert.equal(grouped.get('jornada-pasajeros').textContent,'0');
+assert.equal(grouped.get('vista-publicar').hidden,true);
+grouped.get('jornada-publicar').onclick();assert.equal(grouped.get('vista-publicar').hidden,false);assert.equal(grouped.get('vista-viajes').hidden,true);
+grouped.get('navegar-salidas').onclick();assert.equal(grouped.get('vista-viajes').hidden,false);assert.equal(grouped.get('vista-publicar').hidden,true);
+let liveReservations=[];
+const livePanel={...driverPanel,horarios:[{...driverPanel.horarios[0],id:70,fecha:localDay('Mezcales'),hora_salida:'23:59:00',cupos_ocupados:0}]};
+const live=await app('admin.js','admin.html',name=>ok({...livePanel,reservaciones:liveReservations}),{sessionData:operator});
+assert.equal(live.get('jornada-proxima-contenido').children[1].textContent,'11:59 p. m.');
+liveReservations=[{id:900,horario_id:70,nombre_pasajero:'Ejemplo',telefono_pasajero:'3111234567',asientos:2,estado:'confirmada',folio:'test-folio'}];
+await live.get('refresh').onclick();assert.equal(live.get('jornada-pasajeros').textContent,'2');assert.equal(live.get('jornada-nueva').hidden,false);assert.match(live.get('jornada-nueva-texto').textContent,/Ejemplo.*2/);
+live.get('jornada-nueva-ver').onclick();assert.equal(live.get('vista-reservas').hidden,false);assert.equal(live.get('jornada-nueva').hidden,true);
+await live.get('refresh').onclick();assert.equal(live.get('jornada-nueva').hidden,true,'a repeated poll must not repeat the same alert');
+console.log('Panel sencillo: resumen real, próxima salida, navegación, reserva nueva y sin avisos repetidos verificados.');

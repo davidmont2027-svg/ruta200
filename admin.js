@@ -36,13 +36,13 @@ function action(label,fn){const e=document.createElement('button');e.className='
 function showMaintenance(error){
  if(!error?.message?.startsWith('Aplicación en mantenimiento'))return false;
  void avisos.stop();data=null;$('panel').hidden=true;$('login-panel').hidden=true;$('mantenimiento-panel').hidden=false;
- for(const id of ['horarios','reservaciones','pasajeros','flota','conductor'])$(id).replaceChildren();
+ for(const id of ['horarios','horarios-proximos','horarios-pasados','jornada-proxima-contenido','reservaciones','pasajeros','flota','conductor'])$(id).replaceChildren();
  $('foto-vehiculo').hidden=true;$('foto-vehiculo').src='';message($('status'),'');return true;
 }
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
  if(loading)return;loading=true;
- try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data)||fechaVista!==today('Tepic')+today('Mezcales');data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();avisos.updateReservations(data.reservaciones);void avisos.start();enviarDiagnosticoGuardado();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
+ try{const next=await call('r200_panel');const changed=JSON.stringify(next)!==JSON.stringify(data)||fechaVista!==today('Tepic')+today('Mezcales');data=next;$('mantenimiento-panel').hidden=true;$('login-panel').hidden=true;$('panel').hidden=false;$('crear-panel').hidden=!data.conductores.length;if(changed)render();else renderJornada();avisos.updateReservations(data.reservaciones);void avisos.start();enviarDiagnosticoGuardado();message($('status'),'Panel actualizado · '+(data.administrador?'Administrador':'Conductor'));}
  catch(e){if(showMaintenance(e))return;if(!session){$('panel').hidden=true;$('login-panel').hidden=false;security();}message($('status'),e.message,true);}
  finally{loading=false;}
 }
@@ -77,7 +77,7 @@ function render(){
   if(data.administrador&&h.activo)info.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
   listas[grupoViaje(h)].append(a);
  }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
- actualizarFoto();renderReservations();renderPassengers();
+ actualizarFoto();renderReservations();renderPassengers();renderJornada();
 }
 function tripPassengerList(h){
  const details=document.createElement('details');details.className='pasajeros-salida';details.id='pasajeros-salida-'+h.id;
@@ -130,7 +130,7 @@ function renderPassengers(){
  }if(!list.children.length)list.textContent='No hay pasajeros que mostrar.';
 }
 $('login').onsubmit=async e=>{e.preventDefault();if($('entrar').disabled)return;$('entrar').disabled=true;try{const captchaToken=await security().token();const res=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:$('email').value.trim(),password:$('password').value,gotrue_meta_security:{captcha_token:captchaToken}})});const s=await res.json();$('password').value='';if(!res.ok)throw new Error('No se pudo iniciar sesión. Revisa tu cuenta registrada de RUTA 200.');saveSession({...s,expires_at:Date.now()+s.expires_in*1000});await load();}catch(e){message($('status'),e.message,true);}finally{$('entrar').disabled=false;security().reset().catch(()=>{});}};
-$('logout').onclick=async()=>{await avisos.stop({unsubscribe:true});const old=session;saveSession(null);data=null;$('mantenimiento-panel').hidden=true;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
+$('logout').onclick=async()=>{await avisos.stop({unsubscribe:true});const old=session;saveSession(null);data=null;reservasVistas=null;proximaClave='';$('jornada-nueva').hidden=true;$('mantenimiento-panel').hidden=true;$('panel').hidden=true;$('login-panel').hidden=false;$('password').value='';if(old)fetch(API+'/auth/v1/logout',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+old.access_token}}).catch(()=>{});security().reset().catch(()=>{});message($('status'),'Sesión cerrada.');};
 $('reintentar-mantenimiento').onclick=load;$('salir-mantenimiento').onclick=()=>$('logout').onclick();
 $('actualizar-app').onclick=()=>{const url=new URL(location.href);url.searchParams.set('actualizar',String(Date.now()));location.replace(url.href);};
 $('refresh').onclick=load;$('buscar').oninput=()=>{$('lista-reservaciones').open=!!$('buscar').value.trim();renderReservations();};$('buscar-pasajero').oninput=renderPassengers;
@@ -226,6 +226,27 @@ if(session)load();else security();
 
 setInterval(()=>{if(session&&data&&!busy&&!document.hidden)void load();},20000);
 
-$('navegar-salidas').onclick=()=>{$('lista-viajes').open=true;};
-$('publicar-ver-salidas').onclick=()=>{$('lista-viajes').open=true;$('lista-proximos').open=true;};
-$('navegar-reservas').onclick=()=>{$('lista-reservaciones').open=true;};
+$('navegar-salidas').onclick=()=>{abrirVista('viajes');$('lista-viajes').open=true;};
+$('publicar-ver-salidas').onclick=()=>{abrirVista('viajes');$('lista-viajes').open=true;$('lista-proximos').open=true;};
+$('navegar-reservas').onclick=()=>{abrirVista('reservas');$('lista-reservaciones').open=true;};
+
+function abrirVista(vista){for(const id of ['publicar','viajes','reservas'])$('vista-'+id).hidden=id!==vista;const el=$('vista-'+vista);el.scrollIntoView?.({behavior:'smooth',block:'start'});}
+$('jornada-publicar').onclick=()=>abrirVista('publicar');
+$('jornada-nueva-ver').onclick=()=>{$('navegar-reservas').onclick();$('jornada-nueva').hidden=true;};
+let reservasVistas=null,proximaClave='';
+function salidaInstante(h){const utc=new Date(h.fecha+'T'+h.hora_salida+'Z').getTime();return utc+(h.origen==='Tepic'?7:6)*3600000;}
+function renderJornada(){
+ const viajes=data.horarios.filter(visible),hoy=viajes.filter(h=>grupoViaje(h)==='hoy');
+ $('jornada-viajes').textContent=String(hoy.filter(h=>h.activo).length);
+ const confirmadas=data.reservaciones.filter(r=>r.estado==='confirmada'&&viajes.some(h=>h.id===r.horario_id));
+ $('jornada-pasajeros').textContent=String(confirmadas.filter(r=>hoy.some(h=>h.id===r.horario_id)).reduce((n,r)=>n+Number(r.asientos),0));
+ const proximas=viajes.filter(h=>h.activo&&salidaInstante(h)>=Date.now()).sort((a,b)=>salidaInstante(a)-salidaInstante(b));
+ const h=proximas[0],key=JSON.stringify(h||null);const box=$('jornada-proxima-contenido');
+ if(key!==proximaClave){proximaClave=key;box.replaceChildren();
+  if(!h){box.append(p('No tienes próximas salidas publicadas.'));const button=document.createElement('button');button.textContent='Publicar mi primer viaje';button.onclick=()=>abrirVista('publicar');box.append(button);}
+  else{const date=p((grupoViaje(h)==='hoy'?'Hoy':fechaVisible(h.fecha))+' · Hora de '+h.origen),time=p(horaVisible(h.hora_salida));time.className='proxima-hora';const route=p(h.origen+' → '+h.destino);route.className='proxima-ruta';const cupos=p(h.cupos_ocupados+' lugares reservados · '+Math.max(0,h.cupos_totales-h.cupos_ocupados)+' disponibles');cupos.className='proxima-cupos';box.append(date,time,route,p('Encuentro: '+(h.punto_encuentro||'Consulta el punto de encuentro de tu salida.')),cupos);const list=tripPassengerList(h);list.id='proxima-pasajeros-'+h.id;list.children[0].textContent='Ver mis pasajeros';box.append(list);const button=document.createElement('button');button.textContent='Ajustar lugares disponibles';button.onclick=()=>{abrirVista('viajes');$('lista-viajes').open=true;$('lista-proximos').open=true;};box.append(button);}
+ }
+ const ids=new Set(data.reservaciones.filter(r=>r.estado==='confirmada').map(r=>String(r.id)));
+ if(reservasVistas){const nuevas=confirmadas.filter(r=>!reservasVistas.has(String(r.id)));if(nuevas.length){const r=nuevas[0],trip=viajes.find(h=>h.id===r.horario_id);$('jornada-nueva-texto').textContent=r.nombre_pasajero+' · '+r.asientos+' lugar(es) · '+(trip?fechaVisible(trip.fecha)+' · '+horaVisible(trip.hora_salida):'Consulta tu salida');$('jornada-nueva').hidden=false;}}
+ reservasVistas=ids;
+}
