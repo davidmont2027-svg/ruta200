@@ -56,6 +56,8 @@ $('vista-todos-carros').onclick=()=>{vistaTodos=true;render();};
 function grupoViaje(h){const hoy=today(h.origen);return h.fecha<hoy?'pasados':h.fecha>hoy?'proximos':'hoy';}
 function render(){
  fechaVista=today('Tepic')+today('Mezcales');
+ const conductorPropio=data.conductores.find(c=>propios().includes(c.id));
+ $('jornada-saludo').textContent=conductorPropio?'Hola, '+conductorPropio.nombre:'Hola, conductor';$('jornada-rol').hidden=!data.administrador;
  $('vistas-administrador').hidden=!data.administrador;
  $('vista-mis-viajes').disabled=!vistaTodos;$('vista-todos-carros').disabled=vistaTodos;
  $('salidas-titulo').textContent=vistaTodos?'Salidas de todos los carros':'Mis salidas';
@@ -263,7 +265,7 @@ function renderJornada(){
  const proximas=viajes.filter(h=>h.activo&&salidaInstante(h)>=Date.now()).sort((a,b)=>salidaInstante(a)-salidaInstante(b));
  const h=proximas[0],key=JSON.stringify(h||null);const box=$('jornada-proxima-contenido');
  if(key!==proximaClave){proximaClave=key;box.replaceChildren();
-  if(!h){box.append(p('No tienes próximas salidas publicadas.'));const button=document.createElement('button');button.textContent='Publicar mi primer viaje';button.onclick=()=>abrirVista('publicar');box.append(button);}
+  if(!h){box.append(p('Aún no tienes salidas publicadas.'));}
   else{const date=p((grupoViaje(h)==='hoy'?'Hoy':fechaVisible(h.fecha))+' · Hora de '+h.origen),time=p(horaVisible(h.hora_salida));time.className='proxima-hora';const route=p(h.origen+' → '+h.destino);route.className='proxima-ruta';const cupos=p(h.cupos_ocupados+' lugares reservados · '+Math.max(0,h.cupos_totales-h.cupos_ocupados)+' disponibles');cupos.className='proxima-cupos';box.append(date,time,route,p('Encuentro: '+(h.punto_encuentro||'Consulta el punto de encuentro de tu salida.')),cupos);const list=tripPassengerList(h);list.id='proxima-pasajeros-'+h.id;list.children[0].textContent='Ver mis pasajeros';box.append(list);const button=document.createElement('button');button.textContent='Ajustar lugares disponibles';button.onclick=()=>{abrirVista('viajes');$('lista-viajes').open=true;$('lista-proximos').open=true;};box.append(button);}
  }
  const ids=new Set(data.reservaciones.filter(r=>r.estado==='confirmada').map(r=>String(r.id)));
