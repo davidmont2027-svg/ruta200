@@ -75,7 +75,7 @@ assert.equal(driver.get('crear-panel').hidden,false);
 assert.equal(driver.get('conductor').disabled,true);
 assert.equal(driver.get('conductor').children.length,1);
 const tripText=driver.get('horarios-proximos').children[0].children[0].children.map(e=>e.textContent);
-assert.deepEqual(tripText,['Blanca · MG5','Salida: 8 a. m.','20/01/2031','Mezcales → Tepic','Disponible para reservar']);
+assert.deepEqual(tripText,['Blanca · MG5','Salida: 8 a. m.','20/01/2031','Mezcales → Tepic','4 lugares disponibles']);
 driver.get('rol-fecha-1').value='2031-01-20';driver.get('rol-hora-1').value='08:00';
 driver.get('crear').onsubmit({preventDefault(){}});await flush();await flush();
 assert.equal(driver.calls.find(c=>c.name==='r200_crear_rol').body.p_conductor,1);
@@ -114,7 +114,7 @@ console.log('Mantenimiento individual: panel y datos ocultos; reintento, reactiv
 let resolveRoster;
 const roster=await app('admin.js','admin.html',name=>name==='r200_panel'?ok({...driverPanel,horarios:[{...driverPanel.horarios[0],cupos_ocupados:4}],reservaciones:[]}):new Promise(resolve=>resolveRoster=resolve),{sessionData:operator});
 const disclosure=roster.get('horarios-proximos').children[0].children.find(e=>e.tagName==='details');
-assert.match(disclosure.children[0].textContent,/4\/4 asientos ocupados.*Ver pasajeros/);
+assert.match(disclosure.children[0].textContent,/Ver pasajeros.*4 lugar/);
 assert.equal(roster.calls.filter(c=>c.name==='r200_pasajeros_salida').length,0);
 disclosure.open=true;const opening=disclosure.ontoggle();await flush();await disclosure.ontoggle();
 assert.equal(roster.calls.filter(c=>c.name==='r200_pasajeros_salida').length,1);
@@ -169,7 +169,7 @@ publisher.get('publicar-encuentro').value='Astas Las Banderas';submitPublication
 assert.equal(publisher.get('publicar-paso-4').hidden,false);assert.equal(publisher.calls.some(c=>c.name==='r200_publicar_viaje'),false);
 submitPublication();await flush();await flush();
 assert.equal(publisher.get('publicar-listo').hidden,false);const posted=publisher.calls.find(c=>c.name==='r200_publicar_viaje');assert.equal(posted.body.p_conductor,1);assert.equal(posted.body.p_asientos,3);assert.equal(posted.body.p_encuentro,'Astas Las Banderas');assert.equal(posted.headers.Authorization,'Bearer '+operator.access_token);
-const adjust=publisher.get('horarios-proximos').children[0].children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
+const adjust=publisher.get('horarios-proximos').children[0].children.find(e=>e.className==='administrar-viaje').children.find(e=>e.className==='ajuste-asientos');assert.ok(adjust);const counter=adjust.children[1];counter.children[0].onclick();counter.children[0].onclick();assert.equal(counter.children[1].textContent,'2');assert.equal(publisher.calls.some(c=>c.name==='r200_ajustar_disponibles'),false);adjust.children[2].onclick();await flush();await flush();const adjusted=publisher.calls.find(c=>c.name==='r200_ajustar_disponibles');assert.equal(adjusted.body.p_disponibles,2);assert.equal(adjusted.body.p_total_esperado,4);assert.equal(adjusted.body.p_ocupados_esperados,0);
 console.log('Publicación en cinco pasos y control − / + / Aceptar: validación, envío autenticado, punto de encuentro y protección ante datos obsoletos verificados.');
 
 assert.equal(JSON.parse(op.local.get('r200-operador')).access_token,operator.access_token);
