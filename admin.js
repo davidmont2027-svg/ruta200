@@ -38,7 +38,7 @@ function showMaintenance(error){
  if(!error?.message?.startsWith('Aplicación en mantenimiento'))return false;
  void avisos.stop();data=null;$('panel').hidden=true;$('login-panel').hidden=true;$('mantenimiento-panel').hidden=false;
  for(const id of ['horarios','horarios-proximos','horarios-pasados','jornada-proxima-contenido','reservaciones','pasajeros','flota','conductor'])$(id).replaceChildren();
- $('foto-vehiculo').hidden=true;$('foto-vehiculo').src='';message($('status'),'');return true;
+ message($('status'),'');return true;
 }
 async function mutate(fn){if(busy)return;busy=true;for(const b of document.querySelectorAll('button'))b.disabled=true;try{await fn();await load();}catch(e){if(!showMaintenance(e))message($('status'),e.message,true);}finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;}}
 async function load(){
@@ -82,7 +82,7 @@ function render(){
   a.append(administrar);
   listas[grupoViaje(h)].append(a);
  }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
- actualizarFoto();renderReservations();renderPassengers();renderJornada();
+ renderReservations();renderPassengers();renderJornada();
 }
 function tripPassengerList(h){
  const details=document.createElement('details');details.className='pasajeros-salida';details.id='pasajeros-salida-'+h.id;
@@ -163,8 +163,7 @@ $('actualizar-app').onclick=()=>{const url=new URL(location.href);url.searchPara
 $('refresh').onclick=load;$('buscar').oninput=()=>{$('lista-reservaciones').open=!!$('buscar').value.trim();renderReservations();};$('buscar-pasajero').oninput=renderPassengers;
 let filas=[],filaId=0;
 function guardarRol(){try{sessionStorage.setItem('r200-rol-borrador',JSON.stringify({conductor:$('conductor').value,salidas:filas.map(f=>({fecha:f.fecha.value,hora:f.hora.value,origen:f.origen.value}))}));}catch{}}
-function actualizarFoto(){const c=data?.conductores.find(x=>x.id===Number($('conductor').value));const foto=fotosVehiculos[c?.vehiculo_id];const img=$('foto-vehiculo');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}}
-$('conductor').onchange=()=>{actualizarFoto();guardarRol();};
+$('conductor').onchange=()=>{guardarRol();};
 function nuevaFila(valores={}){
  const id=++filaId,wrap=document.createElement('article'),grid=document.createElement('div');grid.className='grid';
  const fila={wrap};for(const [campo,titulo] of [['origen','Origen'],['fecha','Fecha'],['hora','Hora de salida']]){
@@ -195,12 +194,6 @@ let publicarPaso=0,publicarAsientos=4;
 try{const draft=JSON.parse(sessionStorage.getItem('r200-publicar-borrador'));if(draft){$('publicar-origen').value=draft.origen==='Mezcales'?'Mezcales':'Tepic';$('publicar-fecha').value=draft.fecha||'';$('publicar-hora').value=draft.hora||'';$('publicar-encuentro').value=String(draft.encuentro||'').slice(0,160);publicarAsientos=Number.isInteger(draft.asientos)&&draft.asientos>=1&&draft.asientos<=4?draft.asientos:4;}}catch{}
 if(!$('publicar-fecha').value)$('publicar-fecha').value=today($('publicar-origen').value);
 function guardarPublicacion(){try{sessionStorage.setItem('r200-publicar-borrador',JSON.stringify({origen:$('publicar-origen').value,fecha:$('publicar-fecha').value,hora:$('publicar-hora').value,encuentro:$('publicar-encuentro').value,asientos:publicarAsientos}));}catch{}}
-function mapaPublicacion(){
- const origen=$('publicar-origen').value,destino=origen==='Tepic'?'Mezcales':'Tepic';
- const from=encodeURIComponent(origen+', Nayarit, México'),to=encodeURIComponent(destino+', Nayarit, México');
- const frame=document.createElement('iframe');frame.title='Mapa de '+origen+' a '+destino;frame.src='https://maps.google.com/maps?saddr='+from+'&daddr='+to+'&output=embed';frame.loading='lazy';
- const link=document.createElement('a');link.textContent='Abrir recorrido en Google Maps ↗';link.href='https://www.google.com/maps/dir/?api=1&origin='+from+'&destination='+to+'&travelmode=driving';link.target='_blank';link.rel='noopener';$('publicar-mapa').replaceChildren(frame,link);
-}
 function mostrarPublicacion(){
  for(let i=0;i<5;i++)$('publicar-paso-'+i).hidden=i!==publicarPaso;
  const labels=['Tu recorrido','Tus asientos','Hora de salida','Punto de encuentro','Revisa tu salida'];
@@ -215,7 +208,7 @@ function mostrarPublicacion(){
  $('publicar-resumen-asientos').textContent=publicarAsientos+' asiento(s) disponibles';$('publicar-resumen-encuentro').textContent=$('publicar-encuentro').value.trim();
 }
 for(const id of ['publicar-fecha','publicar-hora','publicar-encuentro'])$(id).oninput=guardarPublicacion;
-$('publicar-origen').onchange=()=>{guardarPublicacion();mapaPublicacion();mostrarPublicacion();};
+$('publicar-origen').onchange=()=>{guardarPublicacion();mostrarPublicacion();};
 $('publicar-menos').onclick=()=>{publicarAsientos=Math.max(1,publicarAsientos-1);guardarPublicacion();mostrarPublicacion();};
 $('publicar-mas').onclick=()=>{publicarAsientos=Math.min(4,publicarAsientos+1);guardarPublicacion();mostrarPublicacion();};
 $('publicar-atras').onclick=()=>{if(busy)return;publicarPaso=Math.max(0,publicarPaso-1);message($('publicar-error'),'');mostrarPublicacion();};
@@ -235,7 +228,7 @@ $('publicar-form').onsubmit=e=>{e.preventDefault();if(busy)return;
  catch(error){message($('publicar-error'),error.message,true);throw error;}finally{for(const input of inputs)input.disabled=false;}
  });
 };
-mostrarPublicacion();mapaPublicacion();
+mostrarPublicacion();
 function ajusteAsientos(h){
  const wrap=document.createElement('section');wrap.className='ajuste-asientos';const heading=document.createElement('h3');heading.textContent='Asientos disponibles';
  let disponibles=Math.max(0,Number(h.cupos_totales)-Number(h.cupos_ocupados));const max=Math.max(0,4-Number(h.cupos_ocupados));

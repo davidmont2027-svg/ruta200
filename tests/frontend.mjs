@@ -37,7 +37,7 @@ console.log('Frontend verificado: sin horarios, vehículo con cupos suficientes,
 const panel={administrador:true,mis_conductores:[1],conductores:[{id:1,nombre:'Blanca',vehiculo_id:1}],vehiculos:[{id:1,modelo:'MG5',color:'Blanco',activo:true}],horarios:[],reservaciones:[],pasajeros:[],historial:[]};
 const operator={access_token:'test-only',refresh_token:'test-only',expires_at:Date.now()+3600000};
 const op=await app('admin.js','admin.html',name=>ok(name==='r200_panel'?panel:{creadas:6,ya_publicadas:0}),{sessionData:operator});
-assert.equal(op.get('crear-panel').hidden,false);assert.equal(op.get('foto-vehiculo').src,'vehiculos/mg5-blanco.svg');
+assert.equal(op.get('crear-panel').hidden,false);
 for(let i=1;i<=6;i++){if(i>1)op.get('agregar-salida').onclick();op.get('rol-fecha-'+i).value='2031-01-20';op.get('rol-hora-'+i).value=['04:00','08:10','10:20','14:30','16:40','20:50'][i-1];}
 op.get('crear').onsubmit({preventDefault(){}});await flush();await flush();
 const bulk=op.calls.find(c=>c.name==='r200_crear_rol');assert.equal(bulk.body.p_salidas.length,6);assert.equal(bulk.body.p_conductor,1);assert.equal(bulk.body.p_salidas[1].origen,'Mezcales');assert.match(op.get('rol-estado').textContent,/6 salidas nuevas/);
