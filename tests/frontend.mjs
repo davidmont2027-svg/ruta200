@@ -114,7 +114,7 @@ console.log('Mantenimiento individual: panel y datos ocultos; reintento, reactiv
 let resolveRoster;
 const roster=await app('admin.js','admin.html',name=>name==='r200_panel'?ok({...driverPanel,horarios:[{...driverPanel.horarios[0],cupos_ocupados:4}],reservaciones:[]}):new Promise(resolve=>resolveRoster=resolve),{sessionData:operator});
 const disclosure=roster.get('horarios-proximos').children[0].children.find(e=>e.tagName==='details');
-assert.match(disclosure.children[0].textContent,/Ver pasajeros.*4 lugar/);
+assert.match(disclosure.children[0].textContent,/Ver pasajeros.*4 reservados/);
 assert.equal(roster.calls.filter(c=>c.name==='r200_pasajeros_salida').length,0);
 disclosure.open=true;const opening=disclosure.ontoggle();await flush();await disclosure.ontoggle();
 assert.equal(roster.calls.filter(c=>c.name==='r200_pasajeros_salida').length,1);

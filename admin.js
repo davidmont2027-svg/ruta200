@@ -75,11 +75,10 @@ function render(){
   const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   const administrar=document.createElement('details');administrar.className='administrar-viaje';administrar.id='administrar-viaje-'+h.id;administrar.open=expanded.has(administrar.id);
   const summary=document.createElement('summary');summary.textContent='Administrar viaje';administrar.append(summary);
+  if(!h.cancelado_at&&futura){const cancel=action('Cancelar viaje completo',()=>cancelarViaje(h));cancel.className='small cancelar-viaje';administrar.append(cancel);}
   if(h.punto_encuentro)administrar.append(p('Encuentro: '+h.punto_encuentro));
   if(h.activo&&futura)administrar.append(ajusteAsientos(h));
-  const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';administrar.append(img);}
   if(data.administrador&&h.activo&&futura)administrar.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
-  if(!h.cancelado_at&&futura)administrar.append(action('Cancelar viaje completo',()=>cancelarViaje(h)));
   a.append(administrar);
   listas[grupoViaje(h)].append(a);
  }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
@@ -87,7 +86,7 @@ function render(){
 }
 function tripPassengerList(h){
  const details=document.createElement('details');details.className='pasajeros-salida';details.id='pasajeros-salida-'+h.id;
- const summary=document.createElement('summary');summary.textContent='Ver pasajeros · '+h.cupos_ocupados+' lugar(es) reservado(s)';
+ const summary=document.createElement('summary');summary.textContent='Ver pasajeros · '+h.cupos_ocupados+' reservado'+(Number(h.cupos_ocupados)===1?'':'s');
  const list=document.createElement('div');list.className='lista-viajeros';
  details.append(summary,list);let loading=false;
  details.ontoggle=async()=>{
