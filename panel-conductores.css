@@ -38,3 +38,5 @@ body{background:#f7f5ef;color:#19281f}.operation-header .header-copy{display:non
 .contacto-viajero a.contacto-llamar{background:#e9eee5;color:#294432;}
 .contacto-viajero a img{display:block;width:22px;height:22px;background:none;border-radius:0;object-fit:contain;}
 .contacto-viajero a:focus-visible{outline:3px solid #92702e;outline-offset:3px;}
+
+.administrar-viaje button.small:last-child{border-color:#b66e60;color:#8a3027;background:#fff0e9;}

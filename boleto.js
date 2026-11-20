@@ -5,8 +5,8 @@ function render(t){
  ticket=t;$('encuentro-boleto').hidden=!t.punto_encuentro;$('encuentro-boleto').textContent=t.punto_encuentro?'Punto de encuentro: '+t.punto_encuentro:'';const foto=fotosVehiculos[t.vehiculo_id];const img=$('foto-carro');img.hidden=!foto;if(foto){img.src=foto.src;img.alt=foto.alt;}$('conductor-boleto').textContent='Conductor: '+(t.conductor||'Por confirmar');
  for(const [id,value] of Object.entries({folio:'R200-'+t.folio.toUpperCase(),fecha:t.fecha,hora:t.hora+' (hora de '+t.origen+')',origen:t.origen,destino:t.destino,asientos:t.asientos+' lugar(es)',pasajero:t.pasajero,telefono:t.telefono,vehiculo:t.vehiculo,total:'$'+t.total+' MXN'}))$(id).textContent=value;
  $('folio').style.fontSize='15px';$('folio').style.overflowWrap='anywhere';
- $('confirmacion').textContent=t.estado==='confirmada'?'🎟️ RESERVACIÓN CONFIRMADA':t.estado==='cancelada'?'RESERVACIÓN CANCELADA':'AUSENCIA REGISTRADA';
- $('detalle-estado').textContent='Estado verificado en RUTA 200 · Pago al abordar';
+ $('confirmacion').textContent=t.estado==='confirmada'?'🎟️ RESERVACIÓN CONFIRMADA':t.estado==='cancelada'?(t.viaje_cancelado?'VIAJE CANCELADO':'RESERVACIÓN CANCELADA'):'AUSENCIA REGISTRADA';
+ $('detalle-estado').textContent=t.estado==='cancelada'?(t.viaje_cancelado?'El conductor canceló este viaje.':t.cancelada_por_conductor?'El conductor canceló tu reservación.':'Reservación cancelada.')+(t.motivo_cancelacion?' Motivo: '+t.motivo_cancelacion:''):'Estado verificado en RUTA 200 · Pago al abordar';
  $('cancelar').hidden=t.estado!=='confirmada';$('cancelar').disabled=Date.now()>new Date(t.cancelable_hasta).getTime();
  $('limite').textContent='Puedes cancelar hasta el '+new Intl.DateTimeFormat('es-MX',{timeZone:t.origen==='Tepic'?'America/Mazatlan':'America/Mexico_City',dateStyle:'short',timeStyle:'short'}).format(new Date(t.cancelable_hasta))+' (hora de '+t.origen+').';
  $('compartir').disabled=false;saveTicket(key,t);
@@ -20,3 +20,7 @@ $('actualizar-boleto').onclick=load;
 $('cancelar').onclick=async()=>{if(busy||!ticket||!confirm('¿Cancelar esta reservación y liberar tus '+ticket.asientos+' asiento(s)?'))return;busy=true;$('cancelar').disabled=true;try{render(await rpc('r200_cancelar',{p_clave:key}));}catch(e){message($('estado-boleto'),e.message,true);}finally{busy=false;}};
 $('compartir').onclick=()=>{if(!ticket)return;const text='🎟️ RUTA 200\n'+ticket.pasajero+'\n'+ticket.origen+' → '+ticket.destino+'\n'+ticket.fecha+' · '+ticket.hora+' (hora de '+ticket.origen+')\n'+ticket.asientos+' asiento(s) · $'+ticket.total+' MXN\nEstado: '+ticket.estado+(ticket.punto_encuentro?'\nEncuentro: '+ticket.punto_encuentro:'')+'\nVehículo: '+ticket.vehiculo+'\nEnlace privado: '+ticketLink(key);window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank','noopener');};
 load();
+
+setInterval(()=>{if(ticket?.estado==='confirmada'&&!busy&&!document.hidden)void load();},20000);
+
+setInterval(()=>{if(ticket?.estado==='confirmada'&&!busy&&!document.hidden)void load();},20000);

@@ -71,7 +71,7 @@ function render(){
   const title=document.createElement('strong');title.textContent=(h.conductor_nombre||c?.nombre||'Conductor por confirmar')+' · '+(v?.modelo||h.vehiculo_nombre||'Vehículo '+h.vehiculo_id);
   info.append(title,p('Salida: '+horaVisible(h.hora_salida)),p(fechaVisible(h.fecha)),p(h.origen+' → '+h.destino));
   const futura=salidaInstante(h)>Date.now();
-  const estado=p(!h.activo?'Cerrada':!futura?'Salida pasada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':Math.max(0,h.cupos_totales-h.cupos_ocupados)+' lugares disponibles');estado.className='pill';info.append(estado);a.append(info);
+  const estado=p(h.cancelado_at?'Viaje cancelado':!h.activo?'Cerrada':!futura?'Salida pasada':Number(h.cupos_ocupados)>=Number(h.cupos_totales)?'Completa':Math.max(0,h.cupos_totales-h.cupos_ocupados)+' lugares disponibles');estado.className='pill';info.append(estado);a.append(info);
   const disclosure=tripPassengerList(h);a.append(disclosure);disclosure.open=expanded.has(disclosure.id);
   const administrar=document.createElement('details');administrar.className='administrar-viaje';administrar.id='administrar-viaje-'+h.id;administrar.open=expanded.has(administrar.id);
   const summary=document.createElement('summary');summary.textContent='Administrar viaje';administrar.append(summary);
@@ -79,6 +79,7 @@ function render(){
   if(h.activo&&futura)administrar.append(ajusteAsientos(h));
   const photo=fotosVehiculos[h.vehiculo_id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.className='salida-foto';administrar.append(img);}
   if(data.administrador&&h.activo&&futura)administrar.append(action('Cerrar nuevas reservas',async()=>{if(confirm('¿Cerrar esta salida a nuevas reservas? Los boletos se conservan.'))await call('r200_cerrar_horario',{p_horario:h.id});}));
+  if(!h.cancelado_at&&futura)administrar.append(action('Cancelar viaje completo',()=>cancelarViaje(h)));
   a.append(administrar);
   listas[grupoViaje(h)].append(a);
  }for(const [grupo,lista] of Object.entries(listas))if(!lista.children.length)lista.textContent=grupo==='hoy'?'No tienes viajes para hoy.':grupo==='proximos'?'No tienes próximos viajes.':'No hay viajes pasados.';
@@ -103,12 +104,26 @@ function tripPassengerList(h){
     const phone=String(person.telefono||'').replace(/\D/g,'');
     row.append(p('Teléfono: '+(phone||'No disponible')));
     const contacts=contactosPasajero(phone,person.nombre);if(contacts)row.append(contacts);
+    if(person.id&&person.estado==='confirmada'&&salidaInstante(h)>Date.now())row.append(action('Cancelar esta reservación',()=>cancelarReserva(person.id,person.nombre)));
     list.append(row);
    }
   }catch(e){if(!showMaintenance(e))list.replaceChildren(p(e.message+' Cierra y vuelve a abrir para reintentar.'));}
   finally{loading=false;}
  };
  return details;
+}
+function motivoCancelacion(texto){const value=prompt(texto);if(value===null)return null;const reason=value.trim();if(reason.length<3||reason.length>240)throw Error('Escribe un motivo de 3 a 240 caracteres.');return reason;}
+async function cancelarViaje(h){
+ if(!confirm('¿Cancelar COMPLETAMENTE este viaje? Se cancelarán todas sus reservaciones y se liberarán sus lugares.'))return;
+ const motivo=motivoCancelacion('Motivo de la cancelación del viaje (lo verá el pasajero en su boleto):');if(motivo===null)return;
+ const result=await call('r200_cancelar_viaje',{p_horario:h.id,p_motivo:motivo});
+ message($('status'),'Viaje cancelado. '+result.reservas_canceladas+' reservación(es) cancelada(s). Contacta a los pasajeros por llamada o WhatsApp.');
+}
+async function cancelarReserva(id,nombre){
+ if(!confirm('¿Cancelar la reservación de '+nombre+'? Sus lugares volverán a estar disponibles.'))return;
+ const motivo=motivoCancelacion('Motivo de cancelación (lo verá el pasajero en su boleto):');if(motivo===null)return;
+ await call('r200_cancelar_reserva_conductor',{p_reservacion:id,p_motivo:motivo});
+ message($('status'),'Reservación cancelada y lugares liberados. Contacta al pasajero por llamada o WhatsApp.');
 }
 function contactosPasajero(phone,name='pasajero'){
  const digits=String(phone||'').replace(/\D/g,''),international=digits.length===10?'52'+digits:digits;
@@ -129,6 +144,8 @@ function renderFleet(){
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');
  for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));const contacts=contactosPasajero(r.telefono_pasajero,r.nombre_pasajero);if(contacts)a.append(contacts);
+ if(r.estado==='confirmada'&&h&&salidaInstante(h)>Date.now())a.append(action('Cancelar esta reservación',()=>cancelarReserva(r.id,r.nombre_pasajero)));
+ if(r.motivo_cancelacion)a.append(p('Motivo de cancelación: '+r.motivo_cancelacion));
  if(r.estado==='confirmada')a.append(action('Registrar ausencia',async()=>{const reason=prompt('Motivo de la ausencia (solo después de la salida):');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:true,p_motivo:reason});}));
  if(data.administrador&&r.estado==='ausente')a.append(action('Corregir ausencia',async()=>{const reason=prompt('Explica por qué se corrige esta ausencia:');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:false,p_motivo:reason});}));list.append(a);
  }if(!list.children.length)list.textContent='No hay reservaciones que mostrar.';
