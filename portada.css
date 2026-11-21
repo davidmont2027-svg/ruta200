@@ -12,3 +12,14 @@
  .navlinks .cta{display:flex;font-size:15px;min-height:50px;padding:12px 10px;}
  .driver-hero{width:100%;font-size:16px;min-height:58px;}
 }
+
+/* Tutorial opcional: el video se reproduce solo al tocar sus controles. */
+.tutorial-home{padding-block:28px;}
+.tutorial-home h2{font-size:clamp(1.4rem,4vw,2rem);margin:8px 0;}
+.tutorial-home p{line-height:1.5;}
+.tutorial-home details{margin-top:18px;border:1px solid #7b704e;border-radius:16px;overflow:hidden;}
+.tutorial-home summary{cursor:pointer;padding:18px;font-weight:700;color:#f3d680;background:#1c3024;min-height:56px;}
+.tutorial-player{padding:16px;text-align:center;}
+.tutorial-player video{display:block;width:100%;max-width:360px;aspect-ratio:9/16;max-height:75vh;margin:auto;background:#19372b;border-radius:12px;}
+.tutorial-player p{font-size:.85rem;color:inherit;}
+.tutorial-player a{color:inherit;text-decoration:underline;}
