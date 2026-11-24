@@ -6,8 +6,14 @@ const $=id=>document.getElementById(id);
 const production=document.body?.dataset?.entry==='production';
 const storageKey='r200-presencia-prueba';
 let busy=false,captcha,phone='',attempt=null,unmount=null,timer=null,nextSend=0;
-const say=(text,error=false)=>{$('estado').textContent=text;$('estado').style.color=error?'#ffb6b6':'#f3d58c';};
+const selfieHelp=$('ayuda-selfie');
+const say=(text,error=false)=>{
+ $('estado').textContent=text;
+ $('estado').style.color=error?'#ffb6b6':'#f3d58c';
+ if(selfieHelp&&error&&phone&&!$('selfie-panel').hidden)selfieHelp.hidden=false;
+};
 function screen(name){
+ if(selfieHelp&&name==='telefono')selfieHelp.hidden=true;
  for(const panel of ['telefono','selfie','camara','listo'])$(panel+'-panel').hidden=panel!==name;
  $('paso-telefono').removeAttribute('aria-current');$('paso-selfie').removeAttribute('aria-current');
  if(name==='telefono')$('paso-telefono').setAttribute('aria-current','step');
@@ -87,7 +93,7 @@ $('iniciar').onclick=()=>run(async()=>{
  unmount=component.mountDetector($('detector'),{
   sessionId:result.sessionId,credentials,
   onAnalysisComplete:async()=>{clearCamera();screen('selfie');say('Comprobando el resultado…');await run(checkResult);holdConsumedAttempt();},
-  onError:failed,onCancel:failed
+  onError:()=>{failed();if(phone&&selfieHelp)selfieHelp.hidden=false;},onCancel:failed
  });
 });
 $('cerrar').onclick=()=>run(async()=>{
