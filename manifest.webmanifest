@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "RUTA 200 · Juntos en el camino",
+  "name": "RUTA 200 · Kilómetros que nos acercan",
   "short_name": "RUTA 200",
-  "description": "Reserva tus viajes entre Tepic y Mezcales. Juntos en el camino.",
+  "description": "Reserva tus viajes entre Tepic y Mezcales. Kilómetros que nos acercan.",
   "lang": "es-MX",
   "start_url": "./",
   "scope": "./",

@@ -1,4 +1,4 @@
-# RUTA 200 — Juntos en el camino
+# RUTA 200 — Kilómetros que nos acercan
 
 Web de reservaciones Tepic ↔ Mezcales con Supabase. Tarifa: $250 MXN por asiento, pago al abordar; máximo 4 pasajeros por vehículo.
 
