@@ -52,7 +52,12 @@ function horaVisible(hora){const [h,m]=hora.split(':');const n=Number(h);return 
 function propios(){return data.mis_conductores||(!data.administrador?data.conductores.map(c=>c.id):[]);}
 function visible(h){return !data.administrador||vistaTodos||propios().includes(h.conductor_id);}
 $('vista-mis-viajes').onclick=()=>{vistaTodos=false;render();};
-$('vista-todos-carros').onclick=()=>{vistaTodos=true;render();};
+$('vista-todos-carros').onclick=()=>{
+ if(!data?.administrador)return;
+ vistaTodos=true;
+ render();
+ abrirVista('viajes');
+};
 function grupoViaje(h){const hoy=today(h.origen);return h.fecha<hoy?'pasados':h.fecha>hoy?'proximos':'hoy';}
 function render(){
  fechaVista=today('Tepic')+today('Mezcales');
@@ -141,6 +146,7 @@ function contactosPasajero(phone,name='pasajero'){
 function renderFleet(){
  $('flota-panel').hidden=!data.administrador||!vistaTodos;const list=$('flota');list.replaceChildren();
  for(const c of data.conductores){const v=data.vehiculos.find(x=>x.id===c.vehiculo_id);if(!v)continue;const card=document.createElement('article');const photo=fotosVehiculos[v.id];if(photo){const img=document.createElement('img');img.src=photo.src;img.alt=photo.alt;img.style.cssText='width:100%;height:180px;object-fit:contain;border-radius:10px';card.append(img);}const name=document.createElement('strong');name.textContent=c.nombre;card.append(name,p(v.marca+' '+v.modelo+' · '+v.color));list.append(card);}
+ if(data.administrador&&vistaTodos&&!list.children.length)list.append(p('No hay conductores activos con vehículo asignado.'));
 }
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');

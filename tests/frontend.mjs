@@ -196,6 +196,7 @@ const twoTrips={...driverPanel,administrador:true,mis_conductores:[1],conductore
 const split=await app('admin.js','admin.html',()=>ok(twoTrips),{sessionData:operator});
 assert.equal(split.get('horarios-proximos').children.length,1);assert.equal(split.get('conductor').children.length,1);assert.equal(split.get('flota-panel').hidden,true);
 split.get('vista-todos-carros').onclick();assert.equal(split.get('horarios-proximos').children.length,2);assert.equal(split.get('conductor').children.length,2);assert.equal(split.get('flota-panel').hidden,false);
+assert.equal(split.get('vista-viajes').hidden,false);assert.equal(split.get('flota').children.length,2);
 split.get('vista-mis-viajes').onclick();assert.equal(split.get('horarios-proximos').children.length,1);
 console.log('Administrador: mis viajes por identidad y flota completa en vistas separadas.');
 split.get('lista-viajes').open=false;split.get('navegar-salidas').onclick();assert.equal(split.get('lista-viajes').open,true);
