@@ -109,7 +109,7 @@ function tripPassengerList(h){
     row.append(name,p(person.asientos+(Number(person.asientos)===1?' asiento':' asientos')+' · '+(person.estado==='ausente'?'Ausencia registrada':'Reservación confirmada')));
     const phone=String(person.telefono||'').replace(/\D/g,'');
     row.append(p('Teléfono: '+(phone||'No disponible')));
-    const contacts=contactosPasajero(phone,person.nombre);if(contacts)row.append(contacts);
+    const contacts=contactosPasajero(phone,person.nombre,h,person.estado);if(contacts)row.append(contacts);
     if(person.id&&person.estado==='confirmada'&&salidaInstante(h)>Date.now())row.append(action('Cancelar esta reservación',()=>cancelarReserva(person.id,person.nombre)));
     list.append(row);
    }
@@ -131,14 +131,24 @@ async function cancelarReserva(id,nombre){
  await call('r200_cancelar_reserva_conductor',{p_reservacion:id,p_motivo:motivo});
  message($('status'),'Reservación cancelada y lugares liberados. Contacta al pasajero por llamada o WhatsApp.');
 }
-function contactosPasajero(phone,name='pasajero'){
+function contactosPasajero(phone,name='pasajero',trip=null,status=''){
  const digits=String(phone||'').replace(/\D/g,''),international=digits.length===10?'52'+digits:digits;
  if(!/^52[0-9]{10}$/.test(international))return null;
  const links=document.createElement('div');links.className='contacto-viajero';
- for(const [label,href,icon] of [['Llamar','tel:+'+international,'contacto-llamar.svg'],['WhatsApp','https://wa.me/'+international,'contacto-whatsapp.svg']]){
-  const link=document.createElement('a');link.href=href;link.className=label==='WhatsApp'?'contacto-whatsapp':'contacto-llamar';link.ariaLabel=label+' a '+name;link.title=label+' a '+name;
+ const whatsapp='https://wa.me/'+international;
+ const options=[['Llamar','tel:+'+international,'contacto-llamar.svg'],['WhatsApp',whatsapp,'contacto-whatsapp.svg']];
+ if(status==='confirmada'&&trip?.activo&&!trip.cancelado_at&&salidaInstante(trip)>Date.now()){
+  const text='Hola, '+name+'. Te recordamos tu viaje con RUTA 200.\n'
+   +trip.origen+' → '+trip.destino+'\n'
+   +'Salida: '+fechaVisible(trip.fecha)+' a las '+horaVisible(trip.hora_salida)+' (hora de '+trip.origen+').'
+   +(trip.punto_encuentro?'\nPunto de encuentro: '+trip.punto_encuentro+'.':'')
+   +'\nTen tu boleto a la mano. ¡Buen viaje!';
+  options.push(['Enviar recordatorio por WhatsApp',whatsapp+'?text='+encodeURIComponent(text),'contacto-whatsapp.svg']);
+ }
+ for(const [label,href,icon] of options){
+  const link=document.createElement('a');link.href=href;link.className=href.startsWith('https://wa.me/')?'contacto-whatsapp':'contacto-llamar';link.ariaLabel=label+' a '+name;link.title=label+' a '+name;
   const image=document.createElement('img');image.src='icons/'+icon;image.alt='';image.width=22;image.height=22;const text=document.createElement('span');text.textContent=label;link.append(image,text);
-  if(label==='WhatsApp'){link.target='_blank';link.rel='noopener noreferrer';}
+  if(href.startsWith('https://wa.me/')){link.target='_blank';link.rel='noopener noreferrer';}
   links.append(link);
  }
  return links;
@@ -150,7 +160,7 @@ function renderFleet(){
 }
 function renderReservations(){
  if(!data)return;const list=$('reservaciones');list.replaceChildren();const query=$('buscar').value.trim().toLocaleLowerCase('es');
- for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));const contacts=contactosPasajero(r.telefono_pasajero,r.nombre_pasajero);if(contacts)a.append(contacts);
+ for(const r of data.reservaciones){if(!vistaTodos&&data.administrador&&!data.horarios.some(h=>h.id===r.horario_id&&visible(h)))continue;if(![r.nombre_pasajero,r.telefono_pasajero,r.folio].join(' ').toLocaleLowerCase('es').includes(query))continue;const h=data.horarios.find(x=>x.id===r.horario_id);const a=document.createElement('article');a.append(p(r.nombre_pasajero+' · '+r.telefono_pasajero),p((h?h.fecha+' '+h.hora_salida.slice(0,5)+' '+h.origen+' → '+h.destino:'Salida #'+r.horario_id)+' · '+r.asientos+' asiento(s) · '+r.estado),p('Folio: '+r.folio));const contacts=contactosPasajero(r.telefono_pasajero,r.nombre_pasajero,h,r.estado);if(contacts)a.append(contacts);
  if(r.estado==='confirmada'&&h&&salidaInstante(h)>Date.now())a.append(action('Cancelar esta reservación',()=>cancelarReserva(r.id,r.nombre_pasajero)));
  if(r.motivo_cancelacion)a.append(p('Motivo de cancelación: '+r.motivo_cancelacion));
  if(r.estado==='confirmada')a.append(action('Registrar ausencia',async()=>{const reason=prompt('Motivo de la ausencia (solo después de la salida):');if(reason)await call('r200_ausencia',{p_reservacion:r.id,p_ausente:true,p_motivo:reason});}));
