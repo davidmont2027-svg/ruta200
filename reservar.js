@@ -6,6 +6,20 @@ const $=id=>document.getElementById(id);
 const route=$('ruta'),date=$('fecha'),departure=$('salida'),seats=$('asientos'),button=$('continuar'),status=$('estado-reserva');
 let trips=[],loading=false,busy=false,version=0,accessReady=false;
 const origin=()=>route.value==='ida'?'Tepic':'Mezcales';
+const preview=$('vista-previa-salidas'), previewList=$('vista-previa-lista'), previewStatus=$('vista-previa-estado');
+preview.ontoggle=()=>{if(preview.open&&!loading)void load();};
+function renderAvailableDepartures(groups){
+ previewList.replaceChildren();
+ for(const [hour,items] of [...groups].sort(([a],[b])=>a.localeCompare(b))){
+  const available=items.reduce((total,trip)=>total+Math.max(0,Number(trip.disponibles)||0),0);
+  if(!available)continue;
+  const row=document.createElement('li');
+  row.textContent=hour.slice(0,5)+' · '+available+(available===1?' lugar disponible':' lugares disponibles');
+  previewList.append(row);
+ }
+ previewList.hidden=!previewList.children.length;
+ message(previewStatus,previewList.hidden?'No hay salidas con lugares disponibles para esta fecha y recorrido. Prueba otra fecha.':'Hora local de '+origin()+'. Los lugares se confirman al reservar.');
+}
 async function checkAccess(){
  if(busy)return;busy=true;accessReady=false;button.disabled=true;$('contenido').classList.add('hidden');
  $('reintentar-acceso').hidden=true;$('reintentar-acceso').disabled=true;message($('estado-acceso'),'Comprobando tu acceso…');
@@ -27,6 +41,7 @@ $('cerrar-pasajero').onclick=async()=>{if(busy)return;busy=true;try{await logout
 function options(){
  const previous=departure.value;departure.replaceChildren();
  const groups=new Map();for(const t of trips){if(!groups.has(t.hora))groups.set(t.hora,[]);groups.get(t.hora).push(t);}
+ renderAvailableDepartures(groups);
  for(const [hour,items] of groups){const o=document.createElement('option');o.value=hour;const available=items.reduce((a,t)=>a+t.disponibles,0);o.textContent=hour+' — '+available+' lugar(es) disponible(s)';o.disabled=!items.some(t=>t.disponibles>=Number(seats.value));departure.append(o);}
  if([...departure.options].some(o=>o.value===previous&&!o.disabled))departure.value=previous;
  else departure.value=[...departure.options].find(o=>!o.disabled)?.value||'';
@@ -67,9 +82,10 @@ async function load(){
  if(busy||!accessReady)return;const current=++version;loading=true;button.disabled=true;
  date.min=today(origin());if(!date.value||date.value<date.min)date.value=date.min;
  $('carros-horario').replaceChildren();
+ previewList.hidden=true;message(previewStatus,'Consultando salidas disponibles…');
  message(status,'Consultando asientos disponibles…');updateSummary();
  try{const data=await rpc('r200_horarios',{p_fecha:date.value,p_origen:origin()});if(current!==version)return;trips=data;loading=false;options();}
- catch(e){if(current!==version)return;trips=[];departure.replaceChildren();$('carros-horario').replaceChildren();loading=false;updateSummary();message(status,e.message,true);}
+ catch(e){if(current!==version)return;trips=[];departure.replaceChildren();$('carros-horario').replaceChildren();loading=false;updateSummary();message(status,e.message,true);message(previewStatus,'No se pudieron consultar las salidas. Cierra y abre la lista para reintentar.',true);}
 }
 date.value=today();date.min=date.value;date.onchange=load;route.onchange=load;seats.onchange=options;
 $('actualizar').onclick=load;
