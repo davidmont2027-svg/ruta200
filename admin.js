@@ -101,7 +101,10 @@ function tripPassengerList(h){
   try{
    const passengers=await call('r200_pasajeros_salida',{p_horario:h.id});
    if(!Array.isArray(passengers))throw new Error('No se pudo consultar esta salida.');
+   const closure=salidaInstante(h)<=Date.now()&&!h.cancelado_at
+    ?await call('r200_cierre_viaje',{p_horario:h.id}):null;
    list.replaceChildren();
+   if(closure?.finalizado)list.append(p('Viaje completado'));
    if(!passengers.length)list.append(p('Esta salida todavía no tiene reservaciones activas.'));
    for(const person of passengers){
     const row=document.createElement('div');row.className='viajero';
@@ -111,7 +114,43 @@ function tripPassengerList(h){
     row.append(p('Teléfono: '+(phone||'No disponible')));
     const contacts=contactosPasajero(phone,person.nombre,h,person.estado);if(contacts)row.append(contacts);
     if(person.id&&person.estado==='confirmada'&&salidaInstante(h)>Date.now())row.append(action('Cancelar esta reservación',()=>cancelarReserva(person.id,person.nombre)));
+    if(closure){
+     const record=closure.pasajeros.find(item=>item.id===person.id);
+     if(record?.abordo&&person.estado==='confirmada')row.append(p('Abordó'));
+     if(person.estado==='confirmada'&&!closure.finalizado){
+      if(!record?.abordo){
+       row.append(closureAction('Abordó',async()=>call('r200_cierre_viaje',{p_horario:h.id,p_accion:'abordar',p_reserva:person.id})));
+       row.append(closureAction('Registrar ausencia',async()=>{
+        const motivo=motivoCancelacion('Motivo de la ausencia:');
+        if(motivo!==null)await call('r200_ausencia',{p_reservacion:person.id,p_ausente:true,p_motivo:motivo});
+       }));
+      }
+     }
+     if(closure.finalizado&&record?.abordo&&person.estado==='confirmada'){
+      if(record.estrellas)row.append(p('Reseña del pasajero: '+record.estrellas+' de 5'+(record.comentario?' · '+record.comentario:'')));
+      if(record.nota_chofer)row.append(p('Nota del conductor: '+record.nota_chofer));
+      if(record.nota_admin)row.append(p('Seguimiento de administración: '+record.nota_admin));
+      row.append(closureAction('Guardar nota del pasajero',async()=>{
+       const note=prompt('¿Cómo fue el viaje con este pasajero? (Hasta 500 caracteres)',(data.administrador?record.nota_admin:record.nota_chofer)||'');
+       if(note?.trim())await call('r200_cierre_viaje',{p_horario:h.id,p_accion:'nota',p_reserva:person.id,p_nota:note});
+      }));
+     }
+    }
     list.append(row);
+   }
+   if(closure&&!closure.finalizado)list.append(closureAction('Finalizar viaje',async()=>{
+    if(confirm('¿Confirma que el viaje ya terminó?'))await call('r200_cierre_viaje',{p_horario:h.id,p_accion:'finalizar'});
+   }));
+   function closureAction(label,work){
+    const control=document.createElement('button');control.type='button';control.textContent=label;
+    control.onclick=async()=>{
+     if(busy)return;
+     busy=true;control.disabled=true;
+     try{await work();await details.ontoggle();}
+     catch(error){list.append(p(error.message));}
+     finally{busy=false;control.disabled=false;}
+    };
+    return control;
    }
   }catch(e){if(!showMaintenance(e))list.replaceChildren(p(e.message+' Cierra y vuelve a abrir para reintentar.'));}
   finally{loading=false;}
@@ -171,6 +210,25 @@ function renderPassengers(){
  if(!data)return;const list=$('pasajeros');list.replaceChildren();const query=$('buscar-pasajero').value.trim().toLocaleLowerCase('es');
  for(const person of data.pasajeros){if(!(person.nombre+' '+person.telefono).toLocaleLowerCase('es').includes(query))continue;const a=document.createElement('article');a.append(p(person.nombre+' · '+person.telefono),p(person.ausencias+' ausencia(s) desde la última reactivación · '+(person.suspendido?'SUSPENDIDO':'Activo')));if(person.motivo_suspension)a.append(p(person.motivo_suspension));
  for(const h of data.historial.filter(x=>x.telefono_pasajero===person.telefono))a.append(p(new Date(h.fecha_registro).toLocaleDateString('es-MX')+' · '+h.motivo+(h.anulada_at?' · CORREGIDA':'')));
+ if(data.administrador){
+  const history=document.createElement('details'), summary=document.createElement('summary'), content=document.createElement('div');
+  summary.textContent='Historial de viajes';history.append(summary,content);a.append(history);
+  history.ontoggle=async()=>{
+   if(!history.open)return;
+   content.replaceChildren(p('Consultando viajes…'));
+   try{
+    const trips=await call('r200_historial_viajes_pasajero',{p_telefono:person.telefono});
+    content.replaceChildren();
+    if(!trips.length)content.append(p('Todavía no hay viajes registrados.'));
+    for(const trip of trips){
+     const result=trip.estado==='ausente'?'Ausente':trip.estado==='cancelada'?'Cancelado':trip.abordo?(trip.finalizado?'Viaje completado':'Abordó'):'Sin registro de abordaje';
+     content.append(p(fechaVisible(trip.fecha)+' · '+trip.origen+' → '+trip.destino+' · '+result));
+     if(trip.nota_chofer)content.append(p('Conductor: '+trip.nota_chofer));
+     if(trip.nota_admin)content.append(p('Administración: '+trip.nota_admin));
+    }
+   }catch(error){content.replaceChildren(p(error.message));}
+  };
+ }
  if(data.administrador&&person.suspendido)a.append(action('Dar segunda oportunidad',async()=>{const reason=prompt('Motivo de la reactivación acordada con el pasajero:');if(reason)await call('r200_reactivar',{p_telefono:person.telefono,p_motivo:reason});}));list.append(a);
  }if(!list.children.length)list.textContent='No hay pasajeros que mostrar.';
 }

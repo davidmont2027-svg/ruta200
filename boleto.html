@@ -24,6 +24,8 @@ strong{font-size:19px}
 .car img{width:100%;max-height:360px;object-fit:contain;border-radius:12px}
 .total{background:linear-gradient(#ffe07d,#e6a624);color:#111;text-align:center;padding:18px;font-size:27px;font-weight:bold;border-radius:13px;margin:12px}
 button{border:0;border-radius:13px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer}
+#resena-viaje label{display:block;margin:12px 0 6px}
+#resena-viaje select,#resena-viaje textarea{width:100%;margin-bottom:10px;padding:10px;font:inherit}
 .actions{display:grid;gap:10px;padding:14px}
 .download{background:#ffcf58;color:#161616;width:100%;margin-top:16px}
 .share{background:#27c267;color:white}
@@ -73,13 +75,26 @@ button{border:0;border-radius:13px;padding:15px;font-size:16px;font-weight:bold;
 <p>Tres ausencias sin cancelar suspenden tu número. La reactivación requiere contactar a atención al cliente. <a style="color:#ffd36b" href="https://wa.me/523348455057">Contactar a RUTA 200</a></p>
 </section>
 
+<section id="resena-viaje" hidden>
+<h2>Califica tu viaje</h2>
+<form id="resena-form">
+<label for="resena-estrellas">¿Cómo estuvo tu viaje?</label>
+<select id="resena-estrellas" required>
+<option value="">Elige de 1 a 5 estrellas</option><option value="5">★★★★★ · Excelente</option><option value="4">★★★★☆ · Bien</option><option value="3">★★★☆☆ · Regular</option><option value="2">★★☆☆☆ · Mal</option><option value="1">★☆☆☆☆ · Muy mal</option>
+</select>
+<label for="resena-comentario">Comentario para tu conductor (opcional)</label>
+<textarea id="resena-comentario" maxlength="500" rows="3"></textarea>
+<button class="back" id="enviar-resena" type="submit">Enviar reseña</button>
+</form>
+<p id="estado-resena" role="status" aria-live="polite"></p>
+</section>
 <div class="actions"><button id="actualizar-boleto">ACTUALIZAR BOLETO</button><button id="cancelar" hidden>CANCELAR RESERVACIÓN</button>
 <button class="share" id="compartir" disabled>📲 COMPARTIR POR WHATSAPP</button>
 <button class="back" onclick="location.href='index.html'">🏠 VOLVER AL INICIO</button>
 </div>
 </div>
 
-<script type="module" src="boleto.js?v=20261124-descarga"></script>
+<script type="module" src="boleto.js?v=20261124-cierre-viaje"></script>
 <script type="module" src="pwa.js?v=20261116-1"></script></body>
 </html>
 

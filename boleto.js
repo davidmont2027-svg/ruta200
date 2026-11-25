@@ -15,7 +15,7 @@ function render(t){
 }
 async function load(){
  if(!/^[a-f0-9]{64}$/.test(key)){message($('estado-boleto'),'Este enlace no contiene una reservación verificable. Vuelve al inicio para reservar.',true);return;}
- try{render(await rpc('r200_boleto',{p_clave:key}));}catch(e){message($('estado-boleto'),e.message+' Si acabas de reservar y hubo un problema de conexión, pulsa Actualizar boleto.',true);}
+ try{render(await rpc('r200_boleto',{p_clave:key}));void checkReview();}catch(e){message($('estado-boleto'),e.message+' Si acabas de reservar y hubo un problema de conexión, pulsa Actualizar boleto.',true);}
 }
 $('actualizar-boleto').onclick=load;
 $('cancelar').onclick=async()=>{if(busy||!ticket||!confirm('¿Cancelar esta reservación y liberar tus '+ticket.asientos+' asiento(s)?'))return;busy=true;$('cancelar').disabled=true;try{render(await rpc('r200_cancelar',{p_clave:key}));}catch(e){message($('estado-boleto'),e.message,true);}finally{busy=false;}};
@@ -71,6 +71,30 @@ $('descargar-boleto').onclick=()=>{
  }catch{
   message($('estado-descarga'),'No pudimos guardar la imagen. Puedes intentar de nuevo o tomar una captura.',true);
  }
+};
+async function checkReview(){
+ if(ticket?.estado!=='confirmada'||Date.parse(ticket.salida)>Date.now())return;
+ try{
+  const result=await rpc('r200_resena_boleto',{p_clave:key});
+  if(!result.habilitada)return;
+  $('resena-viaje').hidden=false;
+  if(result.enviada)reviewSent();
+ }catch{ /* El boleto sigue disponible si la consulta de reseña falla. */ }
+}
+function reviewSent(){
+ $('resena-form').hidden=true;
+ message($('estado-resena'),'Gracias. Tu reseña se guardó para tu conductor.');
+}
+$('resena-form').onsubmit=async event=>{
+ event.preventDefault();
+ const control=$('enviar-resena');
+ if(control.disabled)return;
+ control.disabled=true;
+ try{
+  await rpc('r200_resena_boleto',{p_clave:key,p_estrellas:Number($('resena-estrellas').value),p_comentario:$('resena-comentario').value.trim()});
+  reviewSent();
+ }catch(error){message($('estado-resena'),error.message,true);}
+ finally{control.disabled=false;}
 };
 load();
 
